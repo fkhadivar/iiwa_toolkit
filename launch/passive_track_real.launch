@@ -1,0 +1,17 @@
+<launch>
+    <!-- <include file="$(find iiwa_gazebo)/launch/iiwa_gazebo.launch">
+    </include> -->
+    <include file="$(find iiwa_driver)/launch/iiwa_bringup.launch">
+    </include>
+    
+    <node name="passive_tracking" pkg="iiwa_toolkit" type="passive_track" output="screen">
+    </node>
+
+    <rosparam file="$(find iiwa_toolkit)/config/passive_track_params.yaml" command="load"/>
+
+    <!-- <node name="plotter"
+            pkg="rqt_plot"
+            type="rqt_plot"
+            args="/iiwa/plotvar/data[0] /iiwa/plotvar/data[1] /iiwa/plotvar/data[2]" >
+    </node> -->
+</launch>
