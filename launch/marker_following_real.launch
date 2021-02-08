@@ -1,0 +1,33 @@
+<launch>
+    <!-- <include file="$(find iiwa_gazebo)/launch/iiwa_gazebo.launch">
+    </include> -->
+    <include file="$(find iiwa_driver)/launch/iiwa_bringup.launch">
+    </include>
+    
+    <node name="marker_following" pkg="iiwa_toolkit" type="marker_following" output="screen">
+    </node>
+
+    <rosparam file="$(find iiwa_toolkit)/config/marker_following_params.yaml" command="load"/>
+
+    <!-- <arg name="server" default="128.178.145.104"/> -->
+    <arg name="server" default="128.178.145.172"/>
+    <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
+        <rosparam subst_value="true">
+        server: $(arg server)
+        port: 3883
+        frame_id: world
+        broadcast_tf: true
+        # Must either specify refresh frequency > 0.0, or a list of trackers to create
+        refresh_tracker_frequency: 1.0
+        #trackers:
+        #- FirstTracker
+        #- SecondTracker
+        </rosparam>
+    </node>
+
+    <!-- <node name="plotter"
+            pkg="rqt_plot"
+            type="rqt_plot"
+            args="/iiwa/plotvar/data[0] /iiwa/plotvar/data[1] /iiwa/plotvar/data[2]" >
+    </node> -->
+</launch>

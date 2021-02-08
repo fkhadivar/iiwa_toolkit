@@ -3,6 +3,10 @@ project(iiwa_toolkit)
 
 add_compile_options(-std=c++14)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -35,3 +39,6 @@ target_link_libraries(limbo_interface ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})
 
 add_executable(passive_track src/node_passive_track.cpp  src/passive_control.cpp ${MODEL_SOURCES})
 target_link_libraries(passive_track ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})
+
+add_executable(marker_following src/node_marker_following.cpp  src/motion_capture.cpp src/passive_control.cpp ${MODEL_SOURCES})
+target_link_libraries(marker_following ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})

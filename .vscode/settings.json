@@ -1,5 +1,15 @@
 {
     "files.associations": {
-        "core": "cpp"
+        "core": "cpp",
+        "type_traits": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "mixinvector": "cpp",
+        "fast_back_stack": "cpp",
+        "bufferobject": "cpp",
+        "iterator": "cpp",
+        "plane": "cpp",
+        "complex": "cpp"
     }
 }

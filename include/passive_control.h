@@ -1,3 +1,21 @@
+//|
+//|    Copyright (C) 2020 Learning Algorithms and Systems Laboratory, EPFL, Switzerland
+//|    Authors:  Farshad Khadivr (maintainer)
+//|    email:   farshad.khadivar@epfl.ch
+//|    website: lasa.epfl.ch
+//|
+//|    This file is part of iiwa_toolkit.
+//|
+//|    iiwa_toolkit is free software: you can redistribute it and/or modify
+//|    it under the terms of the GNU General Public License as published by
+//|    the Free Software Foundation, either version 3 of the License, or
+//|    (at your option) any later version.
+//|
+//|    iiwa_toolkit is distributed in the hope that it will be useful,
+//|    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//|    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//|    GNU General Public License for more details.
+//|
 #ifndef __PASSIVE_CONTROL__
 #define __PASSIVE_CONTROL__
 #include "ros/ros.h"
@@ -65,12 +83,13 @@ Eigen::Matrix<typename MatT::Scalar, MatT::ColsAtCompileTime, MatT::RowsAtCompil
 }
 
 
-class passive_control
+class PassiveControl
 {
 private:
     Robot _robot;
     iiwa_tools::IiwaTools _tools;
 
+    bool first = true;
     double dsGain_pos;
     double dsGain_ori;
 
@@ -78,10 +97,11 @@ private:
     void computeTorqueCmd();
     std::unique_ptr<DSController> dsContPos;
     std::unique_ptr<DSController> dsContOri;
+    
 public:
-    passive_control();
-    passive_control(const std::string& urdf_string,const std::string& end_effector);
-    ~passive_control();
+    PassiveControl();
+    PassiveControl(const std::string& urdf_string,const std::string& end_effector);
+    ~PassiveControl();
     void updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::VectorXd& jnt_v,const Eigen::VectorXd& jnt_t);
     
     void set_desired_pose(const Eigen::Vector3d& pos, const Eigen::Vector4d& quat);
@@ -89,7 +109,12 @@ public:
     void set_ori_gains(const double& ds, const double& lambda0,const double& lambda1);
     void set_null_pos(const Eigen::VectorXd& nullPosition);
 
-    Eigen::VectorXd getCmd(){return _trq_cmd;}
+    Eigen::VectorXd getCmd(){
+        computeTorqueCmd();
+        return _trq_cmd;}
+    Eigen::Vector3d getEEpos();
+    Eigen::Vector4d getEEquat();
+
 };
 
 #endif

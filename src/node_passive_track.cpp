@@ -1,5 +1,20 @@
 //|
-
+//|    Copyright (C) 2020 Learning Algorithms and Systems Laboratory, EPFL, Switzerland
+//|    Authors:  Farshad Khadivr (maintainer)
+//|    email:   farshad.khadivar@epfl.ch
+//|    website: lasa.epfl.ch
+//|
+//|    This file is part of iiwa_toolkit.
+//|
+//|    iiwa_toolkit is free software: you can redistribute it and/or modify
+//|    it under the terms of the GNU General Public License as published by
+//|    the Free Software Foundation, either version 3 of the License, or
+//|    (at your option) any later version.
+//|
+//|    iiwa_toolkit is distributed in the hope that it will be useful,
+//|    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//|    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//|    GNU General Public License for more details.
 //|
 #include <mutex>
 #include <fstream>
@@ -93,17 +108,40 @@ class IiwaRosMaster
         // Initialize iiwa tools
         
         
-        _controller = std::make_unique<passive_control>(urdf_string, end_effector);
+        _controller = std::make_unique<PassiveControl>(urdf_string, end_effector);
         
-        Eigen::Vector3d des_pos = {-0.5 , 0.5, 0.2}; 
+        double ds_gain_pos;
+        double ds_gain_ori;
+        double lambda0_pos;
+        double lambda1_pos;
+        double lambda0_ori;
+        double lambda1_ori;
+
+        _n.getParam("control/dsGainPos", ds_gain_pos);
+        _n.getParam("control/dsGainOri", ds_gain_ori);
+        _n.getParam("control/lambda0Pos",lambda0_pos);
+        _n.getParam("control/lambda1Pos",lambda1_pos);
+        _n.getParam("control/lambda0Ori",lambda0_ori);
+        _n.getParam("control/lambda1Ori",lambda1_ori);
+
+
+        Eigen::Vector3d des_pos = {0.8 , 0., 0.3}; 
         Eigen::Vector4d des_quat = Eigen::Vector4d::Zero();
-        double angle0 = 0.25*M_PI;
+        double angle0 = 0.5*M_PI;
         des_quat[0] = (std::cos(angle0/2));
-        des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitZ();
+        des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitY();
+        std::vector<double> dpos;
+        std::vector<double> dquat;
+        _n.getParam("target/pos",dpos);
+        _n.getParam("target/quat",dquat);
+        for (size_t i = 0; i < des_pos.size(); i++)
+            des_pos(i) = dpos[i];
+        for (size_t i = 0; i < des_quat.size(); i++)
+            des_quat(i) = dquat[i]; 
         
         _controller->set_desired_pose(des_pos,des_quat);
-        _controller->set_pos_gains(5.,10.,10.);
-        _controller->set_ori_gains(2.5,5.,5.);
+        _controller->set_pos_gains(ds_gain_pos,lambda0_pos,lambda1_pos);
+        _controller->set_ori_gains(ds_gain_ori,lambda0_ori,lambda1_ori);
         // plotting
         _plotPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/plotvar",1);
 
@@ -119,7 +157,6 @@ class IiwaRosMaster
                 if(_optitrack_ready){
 
                     _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
-
                     publishCommandTorque(_controller->getCmd());
                     publishPlotVariable(command_plt);
 
@@ -157,7 +194,7 @@ class IiwaRosMaster
     Eigen::VectorXd command_trq = Eigen::VectorXd(No_JOINTS);
     Eigen::VectorXd command_plt = Eigen::VectorXd(3);
 
-    std::unique_ptr<passive_control> _controller;
+    std::unique_ptr<PassiveControl> _controller;
 
 
     bool _optitrack_initiated;         // Monitor first optitrack markers update
@@ -175,6 +212,8 @@ class IiwaRosMaster
             _feedback.jnt_velocity[i] = (double)msg->velocity[i];
             _feedback.jnt_torque[i]   = (double)msg->effort[i];
         }
+        // std::cout << "joint ps : " << _feedback.jnt_position.transpose() << "\n";
+
     }
     
     void updateTorqueCommand(const std_msgs::Float64MultiArray::ConstPtr &msg, int k){
@@ -229,7 +268,6 @@ int main (int argc, char **argv)
     n.getParam("options/control_mode", options.control_mode);
     n.getParam("options/is_optitrack_on", options.is_optitrack_on);
     n.getParam("options/filter_gain", options.filter_gain);
-    n.getParam("control/dsGain", ds_gain);
 
 
     std::unique_ptr<IiwaRosMaster> IiwaTrack = std::make_unique<IiwaRosMaster>(n,frequency,options);

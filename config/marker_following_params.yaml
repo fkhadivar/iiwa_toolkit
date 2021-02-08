@@ -1,6 +1,8 @@
 options:
   control_mode: "torque"
-  is_optitrack_on: false
+  is_optitrack_on: true
+  is_orientation_track_on: true
+
   filter_gain: 0.2
 
 control:
@@ -12,5 +14,5 @@ control:
     lambda1Ori: 2.5
 
 target:
-    pos: [0.8, 0.0, 0.4]
+    pos: [0.5, 0.0, 0.3]
     quat: [0.7071068, 0.0, 0.7071068,  0.0]

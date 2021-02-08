@@ -1,13 +1,32 @@
+//|
+//|    Copyright (C) 2020 Learning Algorithms and Systems Laboratory, EPFL, Switzerland
+//|    Authors:  Farshad Khadivr (maintainer)
+//|    email:   farshad.khadivar@epfl.ch
+//|    website: lasa.epfl.ch
+//|
+//|    This file is part of iiwa_toolkit.
+//|
+//|    iiwa_toolkit is free software: you can redistribute it and/or modify
+//|    it under the terms of the GNU General Public License as published by
+//|    the Free Software Foundation, either version 3 of the License, or
+//|    (at your option) any later version.
+//|
+//|    iiwa_toolkit is distributed in the hope that it will be useful,
+//|    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//|    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//|    GNU General Public License for more details.
+//|
+
 #include "passive_control.h"
 
-passive_control::passive_control(const std::string& urdf_string,const std::string& end_effector)
+PassiveControl::PassiveControl(const std::string& urdf_string,const std::string& end_effector)
 {
     _tools.init_rbdyn(urdf_string, end_effector);
 
     dsGain_pos = 5.00;
     dsGain_ori = 2.50;
 
-    dsContPos = std::make_unique<DSController>(3, 10., 10.);
+    dsContPos = std::make_unique<DSController>(3, 100., 100.);
     dsContOri = std::make_unique<DSController>(3, 5., 5.);
     
   
@@ -50,16 +69,16 @@ passive_control::passive_control(const std::string& urdf_string,const std::strin
     _robot.pseudo_inv_jacob.setZero();   
     _robot.pseudo_inv_jacobPos.setZero();
 
-    _robot.nulljnt_position << 0.0, 0.0, -0.10, 0.0, 0.1, 0.1, 0.10;
+    _robot.nulljnt_position << 0.0, 0.75, 0.0, -.75, 0., 0.0, 0.0;
 
 
 }
 
-passive_control::~passive_control()
+PassiveControl::~PassiveControl()
 {
 }
 
-void passive_control::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::VectorXd& jnt_v,const Eigen::VectorXd& jnt_t){
+void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::VectorXd& jnt_v,const Eigen::VectorXd& jnt_t){
     
 
     _robot.jnt_position = jnt_p;
@@ -98,45 +117,25 @@ void passive_control::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vect
     //     _plotVar.data[i] = (_robot.ee_des_vel - _robot.ee_vel)[i];
 }
 
-void passive_control::set_desired_pose(const Eigen::Vector3d& pos, const Eigen::Vector4d& quat){
-    _robot.ee_des_pos = pos;
-    _robot.ee_des_quat = quat;
-
-    //! maybe computing desired vel and acc here?
-    // desired position values
-    Eigen::Vector3d deltaX = (_robot.ee_des_pos - _robot.ee_pos);
-    if (deltaX.norm() > 0.10)
-        deltaX = 0.1 * deltaX.normalized();
-    _robot.ee_des_vel   = dsGain_pos * Eigen::Matrix3d::Identity(3,3) *deltaX;
-
-    // desired angular values
-    Eigen::Vector4d dqd = Utils<double>::slerpQuaternion(_robot.ee_quat, _robot.ee_des_quat, 0.5);    
-    Eigen::Vector4d deltaQ;
-    // for some reason this for loop is necessary!
-    for (int i =0; i<4; i++)
-      deltaQ[i] = dqd[i] -  _robot.ee_quat[i];
-
-    Eigen::Vector4d qconj = _robot.ee_quat;
-    qconj.segment(1,3) = -1 * qconj.segment(1,3);
-    Eigen::Vector4d temp_angVel = Utils<double>::quaternionProduct(deltaQ, qconj);
-
-    Eigen::Vector3d tmp_angular_vel = temp_angVel.segment(1,3);
-    if (tmp_angular_vel.norm() > 0.2)
-        tmp_angular_vel = 0.2 * tmp_angular_vel.normalized();
-    _robot.ee_des_angVel    = 2 * dsGain_ori * tmp_angular_vel;
-
+Eigen::Vector3d PassiveControl::getEEpos(){
+    return _robot.ee_pos;
 }
 
-void passive_control::set_pos_gains(const double& ds, const double& lambda0,const double& lambda1){
+Eigen::Vector4d PassiveControl::getEEquat(){
+    return _robot.ee_quat;
+}
+
+
+void PassiveControl::set_pos_gains(const double& ds, const double& lambda0,const double& lambda1){
     dsGain_pos = ds;
     dsContPos->set_damping_eigval(lambda0,lambda1);
 
 }
-void passive_control::set_ori_gains(const double& ds, const double& lambda0,const double& lambda1){
+void PassiveControl::set_ori_gains(const double& ds, const double& lambda0,const double& lambda1){
     dsGain_ori = ds;
     dsContOri->set_damping_eigval(lambda0,lambda1);
 }
-void passive_control::set_null_pos(const Eigen::VectorXd& nullPosition){
+void PassiveControl::set_null_pos(const Eigen::VectorXd& nullPosition){
     if (nullPosition.size() == _robot.nulljnt_position.size() )
     {
         _robot.nulljnt_position = nullPosition;
@@ -144,8 +143,41 @@ void passive_control::set_null_pos(const Eigen::VectorXd& nullPosition){
         ROS_ERROR("wrong size for the null joint position");
     }
 }
-void passive_control::computeTorqueCmd(){
+
+
+void PassiveControl::set_desired_pose(const Eigen::Vector3d& pos, const Eigen::Vector4d& quat){
+    _robot.ee_des_pos = pos;
+    _robot.ee_des_quat = quat;
+
+}
+
+void PassiveControl::computeTorqueCmd(){
     
+    // desired position values
+    Eigen::Vector3d deltaX = _robot.ee_des_pos - _robot.ee_pos;
+    double maxDx = 0.1;
+    if (deltaX.norm() > maxDx)
+        deltaX = maxDx * deltaX.normalized();
+    
+    double theta_g = (-.5/(4*maxDx*maxDx)) * deltaX.transpose() * deltaX;
+    _robot.ee_des_vel   = dsGain_pos*(1+std::exp(theta_g)) *deltaX;
+
+    // desired angular values
+    Eigen::Vector4d dqd = Utils<double>::slerpQuaternion(_robot.ee_quat, _robot.ee_des_quat, 0.5);    
+    Eigen::Vector4d deltaQ = dqd -  _robot.ee_quat;
+
+    Eigen::Vector4d qconj = _robot.ee_quat;
+    qconj.segment(1,3) = -1 * qconj.segment(1,3);
+    Eigen::Vector4d temp_angVel = Utils<double>::quaternionProduct(deltaQ, qconj);
+
+    Eigen::Vector3d tmp_angular_vel = temp_angVel.segment(1,3);
+    double maxDq = 0.2;
+    if (tmp_angular_vel.norm() > maxDq)
+        tmp_angular_vel = maxDq * tmp_angular_vel.normalized();
+
+    double theta_gq = (-.5/(4*maxDq*maxDq)) * tmp_angular_vel.transpose() * tmp_angular_vel;
+    _robot.ee_des_angVel  = 2 * dsGain_ori*(1+std::exp(theta_gq)) * tmp_angular_vel;
+
     // -----------------------get desired force in task space
     dsContPos->Update(_robot.ee_vel,_robot.ee_des_vel);
     Eigen::Vector3d wrenchPos = dsContPos->control_output();   
@@ -162,16 +194,31 @@ void passive_control::computeTorqueCmd(){
 
     // null pos control
     Eigen::MatrixXd tempMat2 =  Eigen::MatrixXd::Identity(7,7) - _robot.jacob.transpose()* _robot.pseudo_inv_jacob* _robot.jacob;
-
+    Eigen::VectorXd nullgains = Eigen::VectorXd::Zero(7);
+    nullgains << 1.,60,10.,40,5.,1.,1.;
+    Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
+    if(er_null.norm()<1.){
+        first = false;
+    }
+    if(er_null.norm()>2e-1){
+        er_null = 0.2*er_null.normalized();
+    }
     Eigen::VectorXd tmp_null_trq = Eigen::VectorXd::Zero(7);
     for (int i =0; i<7; i++){ 
-        tmp_null_trq[i] = -1. * (_robot.jnt_position[i] -_robot.nulljnt_position[i]);
+        tmp_null_trq[i] = -nullgains[i] * er_null[i];
         tmp_null_trq[i] +=-1. * _robot.jnt_velocity[i];
     }
-    tmp_jnt_trq += tempMat2 * tmp_null_trq;
+    if (first){
+        _trq_cmd = tmp_null_trq;
+        ROS_INFO("going to the first pose ");                 
+    }else{
+        _trq_cmd = tmp_jnt_trq + 10.*tempMat2 * tmp_null_trq;
+    }
+    
+    
     
     // Gravity Compensationn
     // the gravity compensation should've been here, but a server form iiwa tools is doing the job.
-   _trq_cmd = tmp_jnt_trq;
+   
 
 }
