@@ -96,7 +96,7 @@ class IiwaRosMaster
         double lambda1_pos;
         double lambda0_ori;
         double lambda1_ori;
-
+        double mass_ee;
         _n.getParam("control/dsGainPos", ds_gain_pos);
         _n.getParam("control/dsGainOri", ds_gain_ori);
         _n.getParam("control/lambda0Pos",lambda0_pos);
@@ -105,7 +105,8 @@ class IiwaRosMaster
         _n.getParam("control/lambda1Ori",lambda1_ori);
 
         _n.getParam("options/is_orientation_track_on",is_ori_track);
-
+        _n.getParam("control/mass_ee",mass_ee);
+        
         
 
 
@@ -125,6 +126,8 @@ class IiwaRosMaster
         _controller->set_desired_pose(init_des_pos,init_des_quat);
         _controller->set_pos_gains(ds_gain_pos,lambda0_pos,lambda1_pos);
         _controller->set_ori_gains(ds_gain_ori,lambda0_ori,lambda1_ori);
+        _controller->set_load(mass_ee);
+        
         // plotting
         _plotPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/plotvar",1);
 
@@ -138,13 +141,14 @@ class IiwaRosMaster
         Eigen::Vector3d ee_pos = _controller->getEEpos();
         // Eigen::Vector3d offset = Eigen::Vector3d(-0.5,0.0,0.3);
 
-        Eigen::Vector3d offset = Eigen::Vector3d(-0.2,0.0,0.4);
+        Eigen::Vector3d offset = Eigen::Vector3d(-0.5,0.0,0.25);
 
 
         // Eigen::Vector3d des_position = objectpos + offset;
         Eigen::Vector3d des_position = 0.5*(objectpos + offset + init_des_pos);
-        des_position[0] = 0.3*(objectpos[0] + offset[0]) + 0.7*init_des_pos[0];
+        des_position[0] = 0.7*(objectpos[0] + offset[0]) + 0.3*init_des_pos[0];
         des_position[1] = 0.7*(objectpos[1] + offset[1]) + 0.3*init_des_pos[1];
+        // des_position[2] = 0.9*(objectpos[2] + offset[2]) + 0.1*init_des_pos[2];
         
         Eigen::Vector4d des_orientation = init_des_quat;
         

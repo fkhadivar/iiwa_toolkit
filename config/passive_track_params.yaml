@@ -1,6 +1,5 @@
 options:
   control_mode: "torque"
-  is_optitrack_on: false
   filter_gain: 0.2
 
 control:

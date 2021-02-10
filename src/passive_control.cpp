@@ -148,9 +148,24 @@ void PassiveControl::set_null_pos(const Eigen::VectorXd& nullPosition){
 void PassiveControl::set_desired_pose(const Eigen::Vector3d& pos, const Eigen::Vector4d& quat){
     _robot.ee_des_pos = pos;
     _robot.ee_des_quat = quat;
-
+    is_just_velocity = false;
+}
+void PassiveControl::set_desired_position(const Eigen::Vector3d& pos){
+    _robot.ee_des_pos = pos;
+     is_just_velocity = false;
+}
+void PassiveControl::set_desired_quat(const Eigen::Vector4d& quat){
+    _robot.ee_des_quat = quat;
+}
+void PassiveControl::set_desired_velocity(const Eigen::Vector3d& vel){
+     _robot.ee_des_vel = vel;
+     is_just_velocity = true;
 }
 
+
+void PassiveControl::set_load(const double& mass ){
+    load_added = mass;
+}
 void PassiveControl::computeTorqueCmd(){
     
     // desired position values
@@ -160,7 +175,9 @@ void PassiveControl::computeTorqueCmd(){
         deltaX = maxDx * deltaX.normalized();
     
     double theta_g = (-.5/(4*maxDx*maxDx)) * deltaX.transpose() * deltaX;
-    _robot.ee_des_vel   = dsGain_pos*(1+std::exp(theta_g)) *deltaX;
+    
+    if(!is_just_velocity)
+        _robot.ee_des_vel   = dsGain_pos*(1+std::exp(theta_g)) *deltaX;
 
     // desired angular values
     Eigen::Vector4d dqd = Utils<double>::slerpQuaternion(_robot.ee_quat, _robot.ee_des_quat, 0.5);    
@@ -180,7 +197,7 @@ void PassiveControl::computeTorqueCmd(){
 
     // -----------------------get desired force in task space
     dsContPos->Update(_robot.ee_vel,_robot.ee_des_vel);
-    Eigen::Vector3d wrenchPos = dsContPos->control_output();   
+    Eigen::Vector3d wrenchPos = dsContPos->control_output() + load_added * 9.8*Eigen::Vector3d::UnitZ();   
     Eigen::VectorXd tmp_jnt_trq_pos = _robot.jacobPos.transpose() * wrenchPos;
 
     // Orientation
@@ -210,8 +227,9 @@ void PassiveControl::computeTorqueCmd(){
     }
     if (first){
         _trq_cmd = tmp_null_trq;
-        ROS_INFO("going to the first pose ");                 
+        ROS_INFO_ONCE("going to the first pose ");                 
     }else{
+        ROS_INFO_ONCE("Tracking in process");
         _trq_cmd = tmp_jnt_trq + 10.*tempMat2 * tmp_null_trq;
     }
     

@@ -55,13 +55,6 @@ class IiwaRosMaster
     _n(n), _loopRate(frequency), _dt(1.0f/frequency),_options(options){
         _stop =false;
 
-        //TODO clean the optitrack code
-        _optitrack_initiated = true;
-        _optitrack_ready = true;
-        if(_options.is_optitrack_on){
-            _optitrack_initiated = false;
-            _optitrack_ready = false;
-        }
 
     }
 
@@ -81,7 +74,11 @@ class IiwaRosMaster
         
         // _subOptitrack[0] = _n.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/baseHand/pose", 1,
         //     boost::bind(&IiwaRosMaster::updateOptitrack,this,_1,0),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
-        
+        _subControl[0] = _n.subscribe<geometry_msgs::Pose>("/passive_control/pos_quat", 1,
+            boost::bind(&IiwaRosMaster::updateControlPos,this,_1),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
+        _subControl[1] = _n.subscribe<geometry_msgs::Pose>("/passive_control/vel_quat", 1,
+            boost::bind(&IiwaRosMaster::updateControlVel,this,_1),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
+
         _TrqCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/TorqueController/command",1);
 
         // Get the URDF XML from the parameter server
@@ -152,19 +149,15 @@ class IiwaRosMaster
     // run node
     void run(){
         while(!_stop && ros::ok()){ 
-            if (_optitrack_initiated){
-                _mutex.lock();
-                if(_optitrack_ready){
+            _mutex.lock();
+                _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
+                publishCommandTorque(_controller->getCmd());
+                publishPlotVariable(command_plt);
 
-                    _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
-                    publishCommandTorque(_controller->getCmd());
-                    publishPlotVariable(command_plt);
-
-                    // publishPlotVariable(_controller->getPlotVariable());
-                    
-                }else{ optitrackInitialization(); }
-                _mutex.unlock();
-            }
+                // publishPlotVariable(_controller->getPlotVariable());
+                
+            _mutex.unlock();
+            
         ros::spinOnce();
         _loopRate.sleep();
         }
@@ -183,6 +176,9 @@ class IiwaRosMaster
 
     ros::Subscriber _subRobotStates[No_Robots];
 
+    ros::Subscriber _subControl[2];
+
+
 
     ros::Subscriber _subOptitrack[TOTAL_No_MARKERS];  // optitrack markers pose
 
@@ -196,9 +192,6 @@ class IiwaRosMaster
 
     std::unique_ptr<PassiveControl> _controller;
 
-
-    bool _optitrack_initiated;         // Monitor first optitrack markers update
-    bool _optitrack_ready;             // Check if all markers position is received
     bool _stop;                        // Check for CTRL+C
     std::mutex _mutex;
 
@@ -246,11 +239,38 @@ class IiwaRosMaster
         _plotPublisher.publish(_plotVar);
     }
     //TODO clean the optitrack
-    void optitrackInitialization(){
+    void updateControlPos(const geometry_msgs::Pose::ConstPtr& msg){
+        Eigen::Vector3d pos;
+        Eigen::Vector4d quat;
+
+        pos << (double)msg->position.x, (double)msg->position.y, (double)msg->position.z;
+        quat << (double)msg->orientation.w, (double)msg->orientation.x, (double)msg->orientation.y, (double)msg->orientation.z;
+        
+        if((pos.norm()>0)&&(pos.norm()<1.5)){
+            _controller->set_desired_position(pos);
+            if((quat.norm() >0)&&(quat.norm() < 1.1)){
+                quat.normalize();
+                _controller->set_desired_quat(quat);
+            }
+        }else{
+            ROS_WARN("INCORRECT POSITIONING"); 
+        }
     }
-    void updateOptitrack(const geometry_msgs::PoseStamped::ConstPtr& msg, int k){
-    }
-    uint16_t checkTrackedMarker(float a, float b){
+
+    void updateControlVel(const geometry_msgs::Pose::ConstPtr& msg){
+        Eigen::Vector3d vel;
+        Eigen::Vector4d quat;
+        vel << (double)msg->position.x, (double)msg->position.y, (double)msg->position.z;
+        quat << (double)msg->orientation.w, (double)msg->orientation.x, (double)msg->orientation.y, (double)msg->orientation.z;
+        if(vel.norm()<1.){
+            _controller->set_desired_velocity(vel);
+            if((quat.norm() > 0)&&(quat.norm() < 1.1)){
+                quat.normalize();
+                _controller->set_desired_quat(quat);
+            }
+        }else{
+            ROS_WARN("VELOCITY OUT OF BOUND");
+        }
     }
 };
 
@@ -266,7 +286,6 @@ int main (int argc, char **argv)
 
     double ds_gain;
     n.getParam("options/control_mode", options.control_mode);
-    n.getParam("options/is_optitrack_on", options.is_optitrack_on);
     n.getParam("options/filter_gain", options.filter_gain);
 
 

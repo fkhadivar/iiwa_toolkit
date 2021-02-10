@@ -90,8 +90,10 @@ private:
     iiwa_tools::IiwaTools _tools;
 
     bool first = true;
+    bool is_just_velocity = false;
     double dsGain_pos;
     double dsGain_ori;
+    double load_added = 0.;
 
     Eigen::VectorXd _trq_cmd = Eigen::VectorXd::Zero(7);
     void computeTorqueCmd();
@@ -105,9 +107,16 @@ public:
     void updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::VectorXd& jnt_v,const Eigen::VectorXd& jnt_t);
     
     void set_desired_pose(const Eigen::Vector3d& pos, const Eigen::Vector4d& quat);
+    void set_desired_position(const Eigen::Vector3d& pos);
+    void set_desired_quat(const Eigen::Vector4d& quat);
+    void set_desired_velocity(const Eigen::Vector3d& vel);
+
+
     void set_pos_gains(const double& ds, const double& lambda0,const double& lambda1);
     void set_ori_gains(const double& ds, const double& lambda0,const double& lambda1);
     void set_null_pos(const Eigen::VectorXd& nullPosition);
+    void set_load(const double& mass);
+
 
     Eigen::VectorXd getCmd(){
         computeTorqueCmd();
