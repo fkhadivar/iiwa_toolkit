@@ -41,8 +41,6 @@ roslaunch iiwa_toolkit passive_track_gazebo.launch
 
 Both of the above commands will launch IIWA in **torque-control mode**. To change the control mode (e.g., position-control), please edit the launch files to select the appropriate controller.
 
-### MoveIt planning
-
 
 Documentation
 ---------------------
