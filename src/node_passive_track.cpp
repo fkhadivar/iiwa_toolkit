@@ -284,7 +284,6 @@ int main (int argc, char **argv)
 
     Options options;
 
-    while(!n.getParam("options/control_mode", options.control_mode)){ROS_INFO("Wating for the option setting");}
     while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Wating for the option setting");}
 
 
