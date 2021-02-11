@@ -19,6 +19,51 @@
 
 #include "passive_control.h"
 
+PassiveDS::PassiveDS(const double& lam0, const double& lam1):eigVal0(lam0),eigVal1(lam1){
+    set_damping_eigval(lam0,lam1);
+}
+
+PassiveDS::~PassiveDS(){}
+void PassiveDS::set_damping_eigval(const double& lam0, const double& lam1){
+    if((lam0 > 0)&&(lam1 > 0)){
+        eigVal0 = lam0;
+        eigVal1 = lam1;
+        damping_eigval(0,0) = eigVal0;
+        damping_eigval(1,1) = eigVal1;
+        damping_eigval(2,2) = eigVal1;
+    }else{
+        std::cerr << "wrong values for the eigenvalues"<<"\n";
+    }
+}
+void PassiveDS::updateDampingMatrix(const Eigen::Vector3d& ref_vel){ 
+
+    if(ref_vel.norm() > 1e-6){
+        baseMat.setRandom();
+        baseMat.col(0) = ref_vel.normalized();
+        for(uint i=1;i<3;i++){
+            for(uint j=0;j<i;j++)
+                baseMat.col(i) -= baseMat.col(j).dot(baseMat.col(i))*baseMat.col(j);
+            baseMat.col(i).normalize();
+        }
+        Dmat = baseMat*damping_eigval*baseMat.transpose();
+    }else{
+        Dmat = Eigen::Matrix3d::Identity();
+    }
+    // otherwise just use the last computed basis
+}
+
+void PassiveDS::update(const Eigen::Vector3d& vel, const Eigen::Vector3d& des_vel){
+    // compute damping
+    updateDampingMatrix(des_vel);
+    // dissipate
+    control_output = - Dmat * vel;
+    // compute control
+    control_output += eigVal0*des_vel;
+}
+Eigen::Vector3d PassiveDS::get_output(){ return control_output;}
+
+//************************************************
+
 PassiveControl::PassiveControl(const std::string& urdf_string,const std::string& end_effector)
 {
     _tools.init_rbdyn(urdf_string, end_effector);
@@ -26,8 +71,8 @@ PassiveControl::PassiveControl(const std::string& urdf_string,const std::string&
     dsGain_pos = 5.00;
     dsGain_ori = 2.50;
 
-    dsContPos = std::make_unique<DSController>(3, 100., 100.);
-    dsContOri = std::make_unique<DSController>(3, 5., 5.);
+    dsContPos = std::make_unique<PassiveDS>( 100., 100.);
+    dsContOri = std::make_unique<PassiveDS>(5., 5.);
     
   
     _robot.name +=std::to_string(0);
@@ -74,9 +119,9 @@ PassiveControl::PassiveControl(const std::string& urdf_string,const std::string&
 
 }
 
-PassiveControl::~PassiveControl()
-{
-}
+PassiveControl::~PassiveControl(){}
+
+
 
 void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::VectorXd& jnt_v,const Eigen::VectorXd& jnt_t){
     
@@ -124,6 +169,7 @@ Eigen::Vector3d PassiveControl::getEEpos(){
 Eigen::Vector4d PassiveControl::getEEquat(){
     return _robot.ee_quat;
 }
+
 
 
 void PassiveControl::set_pos_gains(const double& ds, const double& lambda0,const double& lambda1){
@@ -196,13 +242,13 @@ void PassiveControl::computeTorqueCmd(){
     _robot.ee_des_angVel  = 2 * dsGain_ori*(1+std::exp(theta_gq)) * tmp_angular_vel;
 
     // -----------------------get desired force in task space
-    dsContPos->Update(_robot.ee_vel,_robot.ee_des_vel);
-    Eigen::Vector3d wrenchPos = dsContPos->control_output() + load_added * 9.8*Eigen::Vector3d::UnitZ();   
+    dsContPos->update(_robot.ee_vel,_robot.ee_des_vel);
+    Eigen::Vector3d wrenchPos = dsContPos->get_output() + load_added * 9.8*Eigen::Vector3d::UnitZ();   
     Eigen::VectorXd tmp_jnt_trq_pos = _robot.jacobPos.transpose() * wrenchPos;
 
     // Orientation
-    dsContOri->Update(_robot.ee_angVel,_robot.ee_des_angVel);
-    Eigen::Vector3d wrenchAng   = dsContOri->control_output();
+    dsContOri->update(_robot.ee_angVel,_robot.ee_des_angVel);
+    Eigen::Vector3d wrenchAng   = dsContOri->get_output();
     Eigen::VectorXd tmp_jnt_trq_ang = _robot.jacobAng.transpose() * wrenchAng;
 
 

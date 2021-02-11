@@ -9,8 +9,6 @@ iiwa_toolkit requires several packages to be installed in order to work properly
 
 * [ROS] - ROS: tested in **Melodic** and **Kinetic**; *Indigo* should work also
 * [iiwa_ros] 
-* [passive_ds_control] 
-* [Util]
 
 
 Compilation
@@ -44,7 +42,6 @@ Both of the above commands will launch IIWA in **torque-control mode**. To chang
 
 To do 
 --------------
-- removing the dependency on passive_ds_control and Util
 - add launcher with rqt plot
 Documentation
 ---------------------

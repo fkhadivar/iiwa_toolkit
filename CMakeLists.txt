@@ -16,8 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   sensor_msgs
   message_generation
-  passive_ds_control
-  utils
   iiwa_tools
 )
 find_package(Eigen3 REQUIRED eigen3) 
@@ -25,7 +23,7 @@ find_package(Eigen3 REQUIRED eigen3)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES ${PROJECT_NAME}
- CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs message_generation passive_ds_control utils iiwa_tools
+ CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs message_generation iiwa_tools
 #  DEPENDS system_lib
 )
 
@@ -37,8 +35,8 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 add_executable(limbo_interface src/node_limbo_interface.cpp ${MODEL_SOURCES})
 target_link_libraries(limbo_interface ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})
 
-add_executable(passive_track src/node_passive_track.cpp  src/passive_control.cpp ${MODEL_SOURCES})
+add_executable(passive_track src/node_passive_track.cpp  src/passive_control.cpp include/thirdparty/Utils.cpp ${MODEL_SOURCES})
 target_link_libraries(passive_track ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})
 
-add_executable(marker_following src/node_marker_following.cpp  src/motion_capture.cpp src/passive_control.cpp ${MODEL_SOURCES})
+add_executable(marker_following src/node_marker_following.cpp  src/motion_capture.cpp src/passive_control.cpp include/thirdparty/Utils.cpp ${MODEL_SOURCES})
 target_link_libraries(marker_following ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})

@@ -29,8 +29,7 @@
 
 #include <Eigen/Dense>
 #include <iiwa_tools/iiwa_tools.h>
-#include <passive_ds_controller.h>
-#include "Utils.h"
+#include "thirdparty/Utils.h"
 
 
 struct Robot
@@ -81,6 +80,26 @@ Eigen::Matrix<typename MatT::Scalar, MatT::ColsAtCompileTime, MatT::RowsAtCompil
     }
     return svd.matrixV() * singularValuesInv * svd.matrixU().adjoint();
 }
+class PassiveDS
+{
+private:
+    double eigVal0;
+    double eigVal1;
+    Eigen::Matrix3d damping_eigval = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d baseMat = Eigen::Matrix3d::Identity();
+
+    Eigen::Matrix3d Dmat = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d control_output = Eigen::Vector3d::Zero();
+    void updateDampingMatrix(const Eigen::Vector3d& ref_vel);
+public:
+    PassiveDS(const double& lam0, const double& lam1);
+    ~PassiveDS();
+    void set_damping_eigval(const double& lam0, const double& lam1);
+    void update(const Eigen::Vector3d& vel, const Eigen::Vector3d& des_vel);
+    Eigen::Vector3d get_output();
+};
+
+
 
 
 class PassiveControl
@@ -97,8 +116,8 @@ private:
 
     Eigen::VectorXd _trq_cmd = Eigen::VectorXd::Zero(7);
     void computeTorqueCmd();
-    std::unique_ptr<DSController> dsContPos;
-    std::unique_ptr<DSController> dsContOri;
+    std::unique_ptr<PassiveDS> dsContPos;
+    std::unique_ptr<PassiveDS> dsContOri;
     
 public:
     PassiveControl();

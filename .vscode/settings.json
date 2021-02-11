@@ -10,6 +10,8 @@
         "bufferobject": "cpp",
         "iterator": "cpp",
         "plane": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "drawable": "cpp",
+        "image": "cpp"
     }
 }
