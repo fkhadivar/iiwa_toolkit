@@ -1,5 +1,4 @@
 options:
-  control_mode: "torque"
   filter_gain: 0.2
 
 control:

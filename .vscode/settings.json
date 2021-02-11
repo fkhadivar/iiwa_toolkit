@@ -12,6 +12,9 @@
         "plane": "cpp",
         "complex": "cpp",
         "drawable": "cpp",
-        "image": "cpp"
+        "image": "cpp",
+        "functional": "cpp",
+        "graphicscontext": "cpp",
+        "texture": "cpp"
     }
 }

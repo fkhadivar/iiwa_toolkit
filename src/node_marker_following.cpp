@@ -18,7 +18,6 @@
 #define No_Robots 1
 struct Options
 {
-    std::string control_mode;
     bool is_optitrack_on;
     double filter_gain = 0.2;
 };
@@ -97,15 +96,18 @@ class IiwaRosMaster
         double lambda0_ori;
         double lambda1_ori;
         double mass_ee;
-        _n.getParam("control/dsGainPos", ds_gain_pos);
-        _n.getParam("control/dsGainOri", ds_gain_ori);
-        _n.getParam("control/lambda0Pos",lambda0_pos);
-        _n.getParam("control/lambda1Pos",lambda1_pos);
-        _n.getParam("control/lambda0Ori",lambda0_ori);
-        _n.getParam("control/lambda1Ori",lambda1_ori);
-
-        _n.getParam("options/is_orientation_track_on",is_ori_track);
-        _n.getParam("control/mass_ee",mass_ee);
+        std::vector<double> dpos;
+        std::vector<double> dquat;
+        while(!_n.getParam("control/dsGainPos", ds_gain_pos)){ROS_INFO("waiting for the parameter dsGainsPos");}
+        while(!_n.getParam("control/dsGainOri", ds_gain_ori)){ROS_INFO("waiting for the parameter dsGainOri");}
+        while(!_n.getParam("control/lambda0Pos",lambda0_pos)){ROS_INFO("waiting for the parameter lambda0Pos");}
+        while(!_n.getParam("control/lambda1Pos",lambda1_pos)){ROS_INFO("waiting for the parameter lambda1Pos");}
+        while(!_n.getParam("control/lambda0Ori",lambda0_ori)){ROS_INFO("waiting for the parameter lambda0Ori");}
+        while(!_n.getParam("control/lambda1Ori",lambda1_ori)){ROS_INFO("waiting for the parameter lambda1Ori");}
+        while(!_n.getParam("options/is_orientation_track_on",is_ori_track)){ROS_INFO("waiting for the parameter is_orientation_track_on");}
+        while(!_n.getParam("control/mass_ee",mass_ee)){ROS_INFO("waiting for the parameter mass_ee");}
+        while(!_n.getParam("target/pos",dpos)){ROS_INFO("waiting for the parameter target_pos");}
+        while(!_n.getParam("target/quat",dquat)){ROS_INFO("waiting for the parameter target_quat");}
         
         
 
@@ -114,10 +116,6 @@ class IiwaRosMaster
         double angle0 = 0.5*M_PI;
         init_des_quat[0] = (std::cos(angle0/2));
         init_des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitY();
-        std::vector<double> dpos;
-        std::vector<double> dquat;
-        _n.getParam("target/pos",dpos);
-        _n.getParam("target/quat",dquat);
         for (size_t i = 0; i < init_des_pos.size(); i++)
             init_des_pos(i) = dpos[i];
         for (size_t i = 0; i < init_des_quat.size(); i++)
@@ -298,11 +296,8 @@ int main (int argc, char **argv)
     ros::NodeHandle n;
 
     Options options;
-
-    double ds_gain;
-    n.getParam("options/control_mode", options.control_mode);
-    n.getParam("options/is_optitrack_on", options.is_optitrack_on);
-    n.getParam("options/filter_gain", options.filter_gain);
+    while(!n.getParam("options/is_optitrack_on", options.is_optitrack_on)){ROS_INFO("Waiting for setting the options");}
+    while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Waiting for setting the options");}
 
 
     std::unique_ptr<IiwaRosMaster> IiwaTrack = std::make_unique<IiwaRosMaster>(n,frequency,options);

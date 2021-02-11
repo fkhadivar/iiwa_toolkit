@@ -37,7 +37,6 @@
 
 struct Options
 {
-    std::string control_mode;
     bool is_optitrack_on;
     double filter_gain = 0.;
 };
@@ -238,12 +237,8 @@ int main (int argc, char **argv)
     ros::NodeHandle n;
 
     Options options;
-
-    double ds_gain;
-    n.getParam("options/control_mode", options.control_mode);
-    n.getParam("options/is_optitrack_on", options.is_optitrack_on);
-    n.getParam("options/filter_gain", options.filter_gain);
-    n.getParam("control/dsGain", ds_gain);
+    while(!n.getParam("options/is_optitrack_on", options.is_optitrack_on)){ROS_INFO("waiting ....");};
+    while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("waiting ....");};
 
 
     std::unique_ptr<IiwaRosMaster> IiwaTrack = std::make_unique<IiwaRosMaster>(n,frequency,options);

@@ -113,13 +113,17 @@ class IiwaRosMaster
         double lambda1_pos;
         double lambda0_ori;
         double lambda1_ori;
+        std::vector<double> dpos;
+        std::vector<double> dquat;
 
-        _n.getParam("control/dsGainPos", ds_gain_pos);
-        _n.getParam("control/dsGainOri", ds_gain_ori);
-        _n.getParam("control/lambda0Pos",lambda0_pos);
-        _n.getParam("control/lambda1Pos",lambda1_pos);
-        _n.getParam("control/lambda0Ori",lambda0_ori);
-        _n.getParam("control/lambda1Ori",lambda1_ori);
+        while(!_n.getParam("control/dsGainPos", ds_gain_pos)){ROS_INFO("Wating For the Parameter dsGainPos");}
+        while(!_n.getParam("control/dsGainOri", ds_gain_ori)){ROS_INFO("Wating For the Parameter dsGainOri");}
+        while(!_n.getParam("control/lambda0Pos",lambda0_pos)){ROS_INFO("Wating For the Parameter lambda0Pos");}
+        while(!_n.getParam("control/lambda1Pos",lambda1_pos)){ROS_INFO("Wating For the Parameter lambda1Pos");}
+        while(!_n.getParam("control/lambda0Ori",lambda0_ori)){ROS_INFO("Wating For the Parameter lambda0Ori");}
+        while(!_n.getParam("control/lambda1Ori",lambda1_ori)){ROS_INFO("Wating For the Parameter lambda1Ori");}
+        while(!_n.getParam("target/pos",dpos)){ROS_INFO("Wating For the Parameter target_pos");}
+        while(!_n.getParam("target/quat",dquat)){ROS_INFO("Wating For the Parameter target_pos");}
 
 
         Eigen::Vector3d des_pos = {0.8 , 0., 0.3}; 
@@ -127,10 +131,6 @@ class IiwaRosMaster
         double angle0 = 0.5*M_PI;
         des_quat[0] = (std::cos(angle0/2));
         des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitY();
-        std::vector<double> dpos;
-        std::vector<double> dquat;
-        _n.getParam("target/pos",dpos);
-        _n.getParam("target/quat",dquat);
         for (size_t i = 0; i < des_pos.size(); i++)
             des_pos(i) = dpos[i];
         for (size_t i = 0; i < des_quat.size(); i++)
@@ -284,9 +284,8 @@ int main (int argc, char **argv)
 
     Options options;
 
-    double ds_gain;
-    n.getParam("options/control_mode", options.control_mode);
-    n.getParam("options/filter_gain", options.filter_gain);
+    while(!n.getParam("options/control_mode", options.control_mode)){ROS_INFO("Wating for the option setting");}
+    while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Wating for the option setting");}
 
 
     std::unique_ptr<IiwaRosMaster> IiwaTrack = std::make_unique<IiwaRosMaster>(n,frequency,options);

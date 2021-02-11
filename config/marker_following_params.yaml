@@ -1,5 +1,4 @@
 options:
-  control_mode: "torque"
   is_optitrack_on: true
   is_orientation_track_on: true
 
