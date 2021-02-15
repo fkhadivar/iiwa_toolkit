@@ -141,6 +141,9 @@ public:
         computeTorqueCmd();
         return _trq_cmd;}
     Eigen::Vector3d getEEpos();
+    Eigen::Vector3d getEEVel();
+    Eigen::Vector3d getEEAngVel();
+
     Eigen::Vector4d getEEquat();
 
 };

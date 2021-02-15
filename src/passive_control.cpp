@@ -169,7 +169,12 @@ Eigen::Vector3d PassiveControl::getEEpos(){
 Eigen::Vector4d PassiveControl::getEEquat(){
     return _robot.ee_quat;
 }
-
+Eigen::Vector3d PassiveControl::getEEVel(){
+    return _robot.ee_vel;
+}
+Eigen::Vector3d PassiveControl::getEEAngVel(){
+    return _robot.ee_angVel;
+}
 
 
 void PassiveControl::set_pos_gains(const double& ds, const double& lambda0,const double& lambda1){

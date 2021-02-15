@@ -23,6 +23,8 @@
 #include "std_msgs/Float64MultiArray.h"
 #include "sensor_msgs/JointState.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Twist.h"
+
 #include "ros/ros.h"
 #include <ros/package.h>
 #include <Eigen/Dense>
@@ -80,6 +82,8 @@ class IiwaRosMaster
             boost::bind(&IiwaRosMaster::updateControlVel,this,_1),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
 
         _TrqCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/TorqueController/command",1);
+        _EEPosePublisher = _n.advertise<geometry_msgs::Pose>("/iiwa/ee_info/Pose",1);
+        _EEVelPublisher = _n.advertise<geometry_msgs::Twist>("/iiwa/ee_info/Vel",1);
 
         // Get the URDF XML from the parameter server
         std::string urdf_string, full_param;
@@ -153,6 +157,7 @@ class IiwaRosMaster
                 _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
                 publishCommandTorque(_controller->getCmd());
                 publishPlotVariable(command_plt);
+                publishEEInfo();
 
                 // publishPlotVariable(_controller->getPlotVariable());
                 
@@ -183,6 +188,10 @@ class IiwaRosMaster
     ros::Subscriber _subOptitrack[TOTAL_No_MARKERS];  // optitrack markers pose
 
     ros::Publisher _TrqCmdPublisher;
+    ros::Publisher _EEPosePublisher;
+    ros::Publisher _EEVelPublisher;
+
+
     ros::Publisher _plotPublisher;
 
     feedback _feedback;
@@ -237,6 +246,24 @@ class IiwaRosMaster
         for (size_t i = 0; i < pltVar.size(); i++)
             _plotVar.data[i] = pltVar[i];
         _plotPublisher.publish(_plotVar);
+    }
+    void publishEEInfo(){
+        geometry_msgs::Pose msg1;
+        geometry_msgs::Twist msg2;
+
+        Eigen::Vector3d pos = _controller->getEEpos();
+        Eigen::Vector4d quat =  _controller->getEEquat();        
+        Eigen::Vector3d vel =  _controller->getEEVel();
+        Eigen::Vector3d angVel =  _controller->getEEAngVel();
+        
+        msg1.position.x  = pos[0];msg1.position.y  = pos[1];msg1.position.z  = pos[2];
+        msg1.orientation.w = quat[0];msg1.orientation.x = quat[1];msg1.orientation.y = quat[2];msg1.orientation.z = quat[3];
+
+        msg2.linear.x = vel[0];msg2.linear.y = vel[1];msg2.linear.z = vel[2];
+        msg2.angular.x = angVel[0];msg2.angular.y = angVel[1];msg2.angular.z = angVel[2];
+
+        _EEPosePublisher.publish(msg1);
+        _EEVelPublisher.publish(msg2);
     }
     //TODO clean the optitrack
     void updateControlPos(const geometry_msgs::Pose::ConstPtr& msg){
