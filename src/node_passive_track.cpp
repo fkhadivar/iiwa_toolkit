@@ -126,8 +126,7 @@ class IiwaRosMaster
         while(!_n.getParam("control/lambda1Pos",lambda1_pos)){ROS_INFO("Wating For the Parameter lambda1Pos");}
         while(!_n.getParam("control/lambda0Ori",lambda0_ori)){ROS_INFO("Wating For the Parameter lambda0Ori");}
         while(!_n.getParam("control/lambda1Ori",lambda1_ori)){ROS_INFO("Wating For the Parameter lambda1Ori");}
-        while(!_n.getParam("target/pos",dpos)){ROS_INFO("Wating For the Parameter target_pos");}
-        while(!_n.getParam("target/quat",dquat)){ROS_INFO("Wating For the Parameter target_pos");}
+        
 
 
         Eigen::Vector3d des_pos = {0.8 , 0., 0.3}; 
@@ -135,10 +134,15 @@ class IiwaRosMaster
         double angle0 = 0.5*M_PI;
         des_quat[0] = (std::cos(angle0/2));
         des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitY();
+        
+        while(!_n.getParam("target/pos",dpos)){ROS_INFO("Wating For the Parameter target_pos");}
+        while(!_n.getParam("target/quat",dquat)){ROS_INFO("Wating For the Parameter target_pos");}
         for (size_t i = 0; i < des_pos.size(); i++)
             des_pos(i) = dpos[i];
         for (size_t i = 0; i < des_quat.size(); i++)
             des_quat(i) = dquat[i]; 
+
+        
         
         _controller->set_desired_pose(des_pos,des_quat);
         _controller->set_pos_gains(ds_gain_pos,lambda0_pos,lambda1_pos);
