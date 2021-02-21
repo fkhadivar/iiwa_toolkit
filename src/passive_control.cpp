@@ -114,7 +114,7 @@ PassiveControl::PassiveControl(const std::string& urdf_string,const std::string&
     _robot.pseudo_inv_jacob.setZero();   
     _robot.pseudo_inv_jacobPos.setZero();
 
-    _robot.nulljnt_position << 0.0, 0.75, 0.0, -.75, 0., 0.0, 0.0;
+    _robot.nulljnt_position << 0.0, 0.0, 0.0, -.75, 0., 0.0, 0.0;
 
 
 }
@@ -227,8 +227,11 @@ void PassiveControl::computeTorqueCmd(){
     
     double theta_g = (-.5/(4*maxDx*maxDx)) * deltaX.transpose() * deltaX;
     
+    Eigen::Matrix3d zgain = Eigen::Matrix3d::Identity();
+    zgain(0,0) *= 3.; 
+    zgain(2,2) *= 2.; 
     if(!is_just_velocity)
-        _robot.ee_des_vel   = dsGain_pos*(1+std::exp(theta_g)) *deltaX;
+        _robot.ee_des_vel   = zgain * dsGain_pos*(1+std::exp(theta_g)) *deltaX;
 
     // desired angular values
     Eigen::Vector4d dqd = Utils<double>::slerpQuaternion(_robot.ee_quat, _robot.ee_des_quat, 0.5);    
@@ -263,9 +266,9 @@ void PassiveControl::computeTorqueCmd(){
     // null pos control
     Eigen::MatrixXd tempMat2 =  Eigen::MatrixXd::Identity(7,7) - _robot.jacob.transpose()* _robot.pseudo_inv_jacob* _robot.jacob;
     Eigen::VectorXd nullgains = Eigen::VectorXd::Zero(7);
-    nullgains << 1.,60,10.,40,5.,1.,1.;
+    nullgains << 5.,50,10.,30,5.,2.,2.;
     Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
-    if(er_null.norm()<1.){
+    if(er_null.norm()<1.5){
         first = false;
     }
     if(er_null.norm()>2e-1){

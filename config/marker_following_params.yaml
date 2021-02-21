@@ -11,8 +11,8 @@ control:
     dsGainOri: 3.0
     lambda0Ori: 5.0
     lambda1Ori: 2.5
-    mass_ee: 1.5
+    mass_ee: 2.
 
 target:
-    pos: [0.5, 0.0, 0.3]
+    pos: [0.3, 0.0, 0.4]
     quat: [0.7071068, 0.0, 0.7071068,  0.0]

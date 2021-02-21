@@ -139,17 +139,45 @@ class IiwaRosMaster
         Eigen::Vector3d ee_pos = _controller->getEEpos();
         // Eigen::Vector3d offset = Eigen::Vector3d(-0.5,0.0,0.3);
 
-        Eigen::Vector3d offset = Eigen::Vector3d(-0.5,0.0,0.25);
 
-
-        // Eigen::Vector3d des_position = objectpos + offset;
-        Eigen::Vector3d des_position = 0.5*(objectpos + offset + init_des_pos);
-        des_position[0] = 0.7*(objectpos[0] + offset[0]) + 0.3*init_des_pos[0];
-        des_position[1] = 0.7*(objectpos[1] + offset[1]) + 0.3*init_des_pos[1];
-        // des_position[2] = 0.9*(objectpos[2] + offset[2]) + 0.1*init_des_pos[2];
         
+
+        Eigen::Vector3d offset = Eigen::Vector3d(0.,0.0,-0.2);
+        Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.75,0.0,0.0);
+        Eigen::Matrix3d magnifying = Eigen::Matrix3d::Zero();
+        magnifying.diagonal() = Eigen::Vector3d(-.75,1.2,1.2);
+
+        Eigen::Vector3d virtObj =  magnifying * (objectpos - leader_ref_pos) ;   
+        
+        
+        Eigen::Vector3d des_position = init_des_pos + virtObj +  offset;
+
+        if (des_position[2] < 0.15){
+            des_position[2] = 0.15;
+        }else if(des_position[2] > 1.){
+            des_position[2] = 1.;
+        }
+        
+        if (des_position[0] < 0.4){
+            des_position[0] = 0.4;
+        }else if(des_position[0] > .8){
+            des_position[0] = .8;
+        }
+
+        if (des_position[1] > 0.8){
+            des_position[1] = 0.8;
+        }else if(des_position[1] < -0.8){
+            des_position[1] = -0.8;
+        }
+
+        // Eigen::Vector3d des_position = 0.5*(objectpos + offset + init_des_pos);
+        // des_position[0] = 0.95*(objectpos[0] + offset[0]) + 0.05*init_des_pos[0];
+        // des_position[1] = 0.95*(objectpos[1] + offset[1]) + 0.05*init_des_pos[1];
+        // des_position[2] = 0.95*(objectpos[2] + offset[2]) + 0.05*init_des_pos[2];
+        
+
         Eigen::Vector4d des_orientation = init_des_quat;
-        
+
         if (is_ori_track){
             Eigen::Vector3d obj_z = _optiTrack->getRelativeEntity(1,0).rotMat.col(2);
             Eigen::Matrix3d rdrot =  Utils<double>::rodriguesRotation(Eigen::Vector3d::UnitZ() , obj_z);
