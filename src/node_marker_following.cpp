@@ -142,10 +142,12 @@ class IiwaRosMaster
 
         
 
-        Eigen::Vector3d offset = Eigen::Vector3d(0.,0.0,-0.2);
-        Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.75,0.0,0.0);
+        Eigen::Vector3d offset = Eigen::Vector3d(0.2,0.0,-0.2);
+        // Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.85,0.0,0.0);
+        Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.3,0.0,0.0);
+
         Eigen::Matrix3d magnifying = Eigen::Matrix3d::Zero();
-        magnifying.diagonal() = Eigen::Vector3d(-.75,1.2,1.2);
+        magnifying.diagonal() = Eigen::Vector3d(1.,1.2,1.2);
 
         Eigen::Vector3d virtObj =  magnifying * (objectpos - leader_ref_pos) ;   
         
