@@ -30,6 +30,8 @@
 #include <Eigen/Dense>
 
 #include "passive_control.h"
+#include "iiwa_toolkit/passive_cfg_paramsConfig.h"
+#include "dynamic_reconfigure/server.h"
 
 #define No_JOINTS 7
 #define No_Robots 1
@@ -111,12 +113,7 @@ class IiwaRosMaster
         
         _controller = std::make_unique<PassiveControl>(urdf_string, end_effector);
         
-        double ds_gain_pos;
-        double ds_gain_ori;
-        double lambda0_pos;
-        double lambda1_pos;
-        double lambda0_ori;
-        double lambda1_ori;
+
         std::vector<double> dpos;
         std::vector<double> dquat;
 
@@ -128,9 +125,6 @@ class IiwaRosMaster
         while(!_n.getParam("control/lambda1Ori",lambda1_ori)){ROS_INFO("Wating For the Parameter lambda1Ori");}
         
 
-
-        Eigen::Vector3d des_pos = {0.8 , 0., 0.3}; 
-        Eigen::Vector4d des_quat = Eigen::Vector4d::Zero();
         double angle0 = 0.5*M_PI;
         des_quat[0] = (std::cos(angle0/2));
         des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitY();
@@ -149,7 +143,10 @@ class IiwaRosMaster
         _controller->set_ori_gains(ds_gain_ori,lambda0_ori,lambda1_ori);
         // plotting
         _plotPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/plotvar",1);
-
+        
+        // dynamic configure:
+        _dynRecCallback = boost::bind(&IiwaRosMaster::param_cfg_callback,this,_1,_2);
+        _dynRecServer.setCallback(_dynRecCallback);
         //todo condition here
         return true;
     }
@@ -195,8 +192,11 @@ class IiwaRosMaster
     ros::Publisher _EEPosePublisher;
     ros::Publisher _EEVelPublisher;
 
-
     ros::Publisher _plotPublisher;
+
+    dynamic_reconfigure::Server<iiwa_toolkit::passive_cfg_paramsConfig> _dynRecServer;
+    dynamic_reconfigure::Server<iiwa_toolkit::passive_cfg_paramsConfig>::CallbackType _dynRecCallback;
+
 
     feedback _feedback;
     // std::shared_ptr<iiwa_tools::IiwaTools> _tools;
@@ -209,6 +209,15 @@ class IiwaRosMaster
     std::mutex _mutex;
 
     // std::unique_ptr<control::TrackControl> _controller;
+    
+    double ds_gain_pos;
+    double ds_gain_ori;
+    double lambda0_pos;
+    double lambda1_pos;
+    double lambda0_ori;
+    double lambda1_ori;
+    Eigen::Vector3d des_pos = {0.8 , 0., 0.3}; 
+    Eigen::Vector4d des_quat = Eigen::Vector4d::Zero();
 
   private:
 
@@ -302,6 +311,39 @@ class IiwaRosMaster
         }else{
             ROS_WARN("VELOCITY OUT OF BOUND");
         }
+    }
+
+    void param_cfg_callback(iiwa_toolkit::passive_cfg_paramsConfig& config, uint32_t level){
+        ROS_INFO("Reconfigure request.. Updating the parameters ... ");
+
+        double sc_pos_ds = config.Position_DSgain;
+        double sc_ori_ds = config.Orientation_DSgain;
+        double sc_pos_lm = config.Position_lambda;
+        double sc_ori_lm = config.Orientation_lambda;
+        _controller->set_pos_gains(sc_pos_ds*ds_gain_pos,sc_pos_lm*lambda0_pos,sc_pos_lm*lambda1_pos);
+        _controller->set_ori_gains(sc_ori_ds*ds_gain_ori,sc_ori_lm*lambda0_ori,sc_ori_lm*lambda1_ori);
+        
+        Eigen::Vector3d delta_pos = Eigen::Vector3d(config.dX_des,config.dY_des,config.dZ_des);
+
+        Eigen::Vector4d q_x = Eigen::Vector4d::Zero();
+        q_x(0) = std::cos(config.dX_des_angle/2);
+        q_x(1) = std::sin(config.dX_des_angle/2);
+        Eigen::Matrix3d rotMat_x = Utils<double>::quaternionToRotationMatrix(q_x);
+
+        Eigen::Vector4d q_y = Eigen::Vector4d::Zero();
+        q_y(0) = std::cos(config.dY_des_angle/2);
+        q_y(2) = std::sin(config.dY_des_angle/2);
+        Eigen::Matrix3d rotMat_y = Utils<double>::quaternionToRotationMatrix(q_y);
+
+        Eigen::Vector4d q_z = Eigen::Vector4d::Zero();
+        q_z(0) = std::cos(config.dZ_des_angle/2);
+        q_z(3) = std::sin(config.dZ_des_angle/2);
+        Eigen::Matrix3d rotMat_z = Utils<double>::quaternionToRotationMatrix(q_z);
+
+        //! this part has to be improved
+        Eigen::Matrix3d rotMat = rotMat_z*rotMat_y*rotMat_x * Utils<double>::quaternionToRotationMatrix(des_quat);
+
+        _controller->set_desired_pose(des_pos+delta_pos,Utils<double>::rotationMatrixToQuaternion(rotMat));
     }
 };
 

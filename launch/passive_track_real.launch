@@ -9,6 +9,8 @@
 
     <rosparam file="$(find iiwa_toolkit)/config/passive_track_params.yaml" command="load"/>
 
+    <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="passive_control_gui" />
+
     <!-- <node name="plotter"
             pkg="rqt_plot"
             type="rqt_plot"
