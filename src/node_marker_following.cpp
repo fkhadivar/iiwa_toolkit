@@ -13,6 +13,8 @@
 #include <Eigen/Dense>
 #include "motion_capture.h"
 #include "passive_control.h"
+#include "iiwa_toolkit/marker_tracking_cfg_paramsConfig.h"
+#include "dynamic_reconfigure/server.h"
 
 #define No_JOINTS 7
 #define No_Robots 1
@@ -89,15 +91,12 @@ class IiwaRosMaster
         
         _controller = std::make_unique<PassiveControl>(urdf_string, end_effector);
         
-        double ds_gain_pos;
-        double ds_gain_ori;
-        double lambda0_pos;
-        double lambda1_pos;
-        double lambda0_ori;
-        double lambda1_ori;
+
         double mass_ee;
         std::vector<double> dpos;
         std::vector<double> dquat;
+        std::vector<double> leaderpos;
+
         while(!_n.getParam("control/dsGainPos", ds_gain_pos)){ROS_INFO("waiting for the parameter dsGainsPos");}
         while(!_n.getParam("control/dsGainOri", ds_gain_ori)){ROS_INFO("waiting for the parameter dsGainOri");}
         while(!_n.getParam("control/lambda0Pos",lambda0_pos)){ROS_INFO("waiting for the parameter lambda0Pos");}
@@ -108,6 +107,7 @@ class IiwaRosMaster
         while(!_n.getParam("control/mass_ee",mass_ee)){ROS_INFO("waiting for the parameter mass_ee");}
         while(!_n.getParam("target/pos",dpos)){ROS_INFO("waiting for the parameter target_pos");}
         while(!_n.getParam("target/quat",dquat)){ROS_INFO("waiting for the parameter target_quat");}
+        while(!_n.getParam("leader/pos",leaderpos)){ROS_INFO("waiting for the parameter leader_pos");}
         
         
 
@@ -120,8 +120,12 @@ class IiwaRosMaster
             init_des_pos(i) = dpos[i];
         for (size_t i = 0; i < init_des_quat.size(); i++)
             init_des_quat(i) = dquat[i]; 
-        
-        _controller->set_desired_pose(init_des_pos,init_des_quat);
+        for (size_t i = 0; i < leader_ref_pos.size(); i++)
+            leader_ref_pos(i) = leaderpos[i];
+
+        leader_pos = leader_ref_pos;
+        ref_des_quat = init_des_quat;
+        _controller->set_desired_pose(init_des_pos,ref_des_quat);
         _controller->set_pos_gains(ds_gain_pos,lambda0_pos,lambda1_pos);
         _controller->set_ori_gains(ds_gain_ori,lambda0_ori,lambda1_ori);
         _controller->set_load(mass_ee);
@@ -129,57 +133,36 @@ class IiwaRosMaster
         // plotting
         _plotPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/plotvar",1);
 
+        // dynamic configure:
+        _dynRecCallback = boost::bind(&IiwaRosMaster::param_cfg_callback,this,_1,_2);
+        _dynRecServer.setCallback(_dynRecCallback);
+
         //todo condition here
         return true;
     }
     //
     void updateAttractor(){
 
-        Eigen::Vector3d objectpos = _optiTrack->getRelativeEntity(1,0).pos;
+        Eigen::Vector3d marker_pos = _optiTrack->getRelativeEntity(1,0).pos;
         Eigen::Vector3d ee_pos = _controller->getEEpos();
-        // Eigen::Vector3d offset = Eigen::Vector3d(-0.5,0.0,0.3);
 
 
         
-
-        Eigen::Vector3d offset = Eigen::Vector3d(0.2,0.0,-0.2);
-        // Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.85,0.0,0.0);
-        Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.3,0.0,0.0);
 
         Eigen::Matrix3d magnifying = Eigen::Matrix3d::Zero();
         magnifying.diagonal() = Eigen::Vector3d(1.,1.2,1.2);
 
-        Eigen::Vector3d virtObj =  magnifying * (objectpos - leader_ref_pos) ;   
+        Eigen::Vector3d virtObj =  mirror_dir * magnifying * (marker_pos - leader_pos) ;   
         
         
-        Eigen::Vector3d des_position = init_des_pos + virtObj +  offset;
+        Eigen::Vector3d des_position = init_des_pos + virtObj ;
+        Eigen::Vector4d des_orientation = ref_des_quat;
 
-        if (des_position[2] < 0.15){
-            des_position[2] = 0.15;
-        }else if(des_position[2] > 1.){
-            des_position[2] = 1.;
-        }
+        if (des_position[0] < 0.40){des_position[0] = 0.40;}else if(des_position[0] > 0.80){des_position[0] =  0.8;}
+        if (des_position[1] > 0.80){des_position[1] = 0.80;}else if(des_position[1] < -0.8){des_position[1] = -0.8;}
+        if (des_position[2] < 0.15){des_position[2] = 0.15;}else if(des_position[2] > 1.00){des_position[2] = 1.00;}
         
-        if (des_position[0] < 0.4){
-            des_position[0] = 0.4;
-        }else if(des_position[0] > .8){
-            des_position[0] = .8;
-        }
-
-        if (des_position[1] > 0.8){
-            des_position[1] = 0.8;
-        }else if(des_position[1] < -0.8){
-            des_position[1] = -0.8;
-        }
-
-        // Eigen::Vector3d des_position = 0.5*(objectpos + offset + init_des_pos);
-        // des_position[0] = 0.95*(objectpos[0] + offset[0]) + 0.05*init_des_pos[0];
-        // des_position[1] = 0.95*(objectpos[1] + offset[1]) + 0.05*init_des_pos[1];
-        // des_position[2] = 0.95*(objectpos[2] + offset[2]) + 0.05*init_des_pos[2];
         
-
-        Eigen::Vector4d des_orientation = init_des_quat;
-
         if (is_ori_track){
             Eigen::Vector3d obj_z = _optiTrack->getRelativeEntity(1,0).rotMat.col(2);
             Eigen::Matrix3d rdrot =  Utils<double>::rodriguesRotation(Eigen::Vector3d::UnitZ() , obj_z);
@@ -188,19 +171,12 @@ class IiwaRosMaster
             Utils<double>::quaternionToAxisAngle(Utils<double>::rotationMatrixToQuaternion(rdrot), ax, angle);
             ax[1] *=-1;
             Eigen::Vector4d qtemp =  Utils<double>::axisAngleToQuaterion(ax,angle);
-
-            // Eigen::Matrix3d rdrot1 =  Utils<double>::rodriguesRotation( obj_z , Eigen::Vector3d::UnitZ());
-            // Eigen::Matrix3d rdrot1;
-            // rdrot1 = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY());
-            // rdrot.col(1) = rdrot1.col(1);
-            // Eigen::Matrix3d rot =  rdrot * Utils<double>::quaternionToRotationMatrix(init_des_quat);
-            Eigen::Matrix3d rot =  Utils<double>::quaternionToRotationMatrix(qtemp) * Utils<double>::quaternionToRotationMatrix(init_des_quat);
-
+            Eigen::Matrix3d rot =  Utils<double>::quaternionToRotationMatrix(qtemp) * Utils<double>::quaternionToRotationMatrix(ref_des_quat);
             des_orientation = Utils<double>::rotationMatrixToQuaternion(rot);
         }
         
         if ((ee_pos -des_position).norm() > 1.){
-            _controller->set_desired_pose(init_des_pos,init_des_quat);
+            _controller->set_desired_pose(init_des_pos,ref_des_quat);
         }else{
 
             _controller->set_desired_pose(des_position,des_orientation);
@@ -246,6 +222,10 @@ class IiwaRosMaster
     ros::Publisher _TrqCmdPublisher;
     ros::Publisher _plotPublisher;
 
+    dynamic_reconfigure::Server<iiwa_toolkit::marker_tracking_cfg_paramsConfig> _dynRecServer;
+    dynamic_reconfigure::Server<iiwa_toolkit::marker_tracking_cfg_paramsConfig>::CallbackType _dynRecCallback;
+
+
     feedback _feedback;
     // std::shared_ptr<iiwa_tools::IiwaTools> _tools;
     Eigen::VectorXd command_trq = Eigen::VectorXd(No_JOINTS);
@@ -259,11 +239,24 @@ class IiwaRosMaster
 
     Eigen::Vector3d init_des_pos = {0.8 , 0., 0.3}; 
     Eigen::Vector4d init_des_quat = Eigen::Vector4d::Zero();
+    Eigen::Vector4d ref_des_quat = Eigen::Vector4d::Zero();
+
+    Eigen::Vector3d leader_ref_pos =  Eigen::Vector3d(1.3,0.0,0.0);
+    Eigen::Vector3d leader_pos =  leader_ref_pos;
+
+    Eigen::Matrix3d mirror_dir = Eigen::Matrix3d::Identity();
+
 
     Eigen::Vector3d initial_object_pos ;
     bool is_ori_track = false;
 
-    // std::unique_ptr<control::TrackControl> _controller;
+    double ds_gain_pos;
+    double ds_gain_ori;
+    double lambda0_pos;
+    double lambda1_pos;
+    double lambda0_ori;
+    double lambda1_ori;
+
 
   private:
 
@@ -273,8 +266,6 @@ class IiwaRosMaster
             _feedback.jnt_velocity[i] = (double)msg->velocity[i];
             _feedback.jnt_torque[i]   = (double)msg->effort[i];
         }
-        // std::cout << "joint ps : " << _feedback.jnt_position.transpose() << "\n";
-
     }
     
     void updateTorqueCommand(const std_msgs::Float64MultiArray::ConstPtr &msg, int k){
@@ -288,7 +279,6 @@ class IiwaRosMaster
             command_plt[i] = (double)msg->data[i];
         }
     }
-    // void updateBioTac(const biotac_sensors::BioTacHand &msg);
     void publishCommandTorque(const Eigen::VectorXd& cmdTrq){
         std_msgs::Float64MultiArray _cmd_jnt_torque;
         _cmd_jnt_torque.data.resize(No_JOINTS);
@@ -313,6 +303,58 @@ class IiwaRosMaster
         mkpos << (double)msg->pose.position.x, (double)msg->pose.position.y, (double)msg->pose.position.z;
         mkori << (double)msg->pose.orientation.w, (double)msg->pose.orientation.x, (double)msg->pose.orientation.y, (double)msg->pose.orientation.z;
         _optiTrack->updateEntity(k,mkpos,mkori);
+    }
+
+    void param_cfg_callback(iiwa_toolkit::marker_tracking_cfg_paramsConfig& config, uint32_t level){
+        ROS_INFO("Reconfigure request.. Updating the parameters ... ");
+
+        double sc_pos_ds = config.Position_DSgain;
+        double sc_ori_ds = config.Orientation_DSgain;
+        double sc_pos_lm = config.Position_lambda;
+        double sc_ori_lm = config.Orientation_lambda;
+        _controller->set_pos_gains(sc_pos_ds*ds_gain_pos,sc_pos_lm*lambda0_pos,sc_pos_lm*lambda1_pos);
+        _controller->set_ori_gains(sc_ori_ds*ds_gain_ori,sc_ori_lm*lambda0_ori,sc_ori_lm*lambda1_ori);
+        
+        leader_pos = leader_ref_pos + Eigen::Vector3d(config.Leader_dX,config.Leader_dY,config.Leader_dZ);
+
+        
+        if(config.mirroring_x){
+            mirror_dir(0,0) = -1.;
+        }else{
+            mirror_dir(0,0) = 1.;
+        }
+
+        if(config.mirroring_y){
+            mirror_dir(1,1) = -1.;
+        }else{
+            mirror_dir(1,1) = 1.;
+        }
+
+        if(config.mirroring_z){
+            mirror_dir(2,2) = -1.;
+        }else{
+            mirror_dir(2,2) = 1.;
+        }
+
+        Eigen::Vector4d q_x = Eigen::Vector4d::Zero();
+        q_x(0) = std::cos(config.dX_des_angle/2);
+        q_x(1) = std::sin(config.dX_des_angle/2);
+        Eigen::Matrix3d rotMat_x = Utils<double>::quaternionToRotationMatrix(q_x);
+
+        Eigen::Vector4d q_y = Eigen::Vector4d::Zero();
+        q_y(0) = std::cos(config.dY_des_angle/2);
+        q_y(2) = std::sin(config.dY_des_angle/2);
+        Eigen::Matrix3d rotMat_y = Utils<double>::quaternionToRotationMatrix(q_y);
+
+        Eigen::Vector4d q_z = Eigen::Vector4d::Zero();
+        q_z(0) = std::cos(config.dZ_des_angle/2);
+        q_z(3) = std::sin(config.dZ_des_angle/2);
+        Eigen::Matrix3d rotMat_z = Utils<double>::quaternionToRotationMatrix(q_z);
+
+        //! this part has to be improved
+        Eigen::Matrix3d rotMat = rotMat_z*rotMat_y*rotMat_x * Utils<double>::quaternionToRotationMatrix(init_des_quat);
+     
+        ref_des_quat = Utils<double>::rotationMatrixToQuaternion(rotMat);
     }
 
 };

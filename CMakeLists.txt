@@ -23,6 +23,8 @@ find_package(catkin REQUIRED COMPONENTS
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
   cfg/passive_cfg_params.cfg
+  cfg/marker_tracking_cfg_params.cfg
+
 )
 
 find_package(Eigen3 REQUIRED eigen3) 
@@ -51,3 +53,4 @@ add_dependencies(passive_track ${PROJECT_NAME}_gencfg)
 
 add_executable(marker_following src/node_marker_following.cpp  src/motion_capture.cpp src/passive_control.cpp include/thirdparty/Utils.cpp ${MODEL_SOURCES})
 target_link_libraries(marker_following ${catkin_LIBRARIES} ${Eigen3_LIBRARIES})
+add_dependencies(marker_following ${PROJECT_NAME}_gencfg)

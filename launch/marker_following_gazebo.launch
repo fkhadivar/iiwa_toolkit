@@ -7,6 +7,9 @@
 
     <rosparam file="$(find iiwa_toolkit)/config/marker_following_params.yaml" command="load"/>
 
+    <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="marker_tracking_control_gui" />
+
+
     <!-- <arg name="server" default="128.178.145.104"/> -->
     <arg name="server" default="128.178.145.172"/>
     <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
