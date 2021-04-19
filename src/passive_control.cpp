@@ -229,7 +229,7 @@ void PassiveControl::computeTorqueCmd(){
     
     Eigen::Matrix3d zgain = Eigen::Matrix3d::Identity();
     zgain(0,0) *= 1.5; 
-    zgain(2,2) *= 1.; 
+    zgain(2,2) *= 1.5; 
 
     Eigen::Matrix3d xgain = Eigen::Matrix3d::Identity();
     xgain(0,0) *= 1.5; 

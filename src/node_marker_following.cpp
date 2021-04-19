@@ -315,7 +315,7 @@ class IiwaRosMaster
         _controller->set_pos_gains(sc_pos_ds*ds_gain_pos,sc_pos_lm*lambda0_pos,sc_pos_lm*lambda1_pos);
         _controller->set_ori_gains(sc_ori_ds*ds_gain_ori,sc_ori_lm*lambda0_ori,sc_ori_lm*lambda1_ori);
         
-        leader_pos = leader_ref_pos + Eigen::Vector3d(config.Leader_dX,config.Leader_dY,config.Leader_dZ);
+        leader_pos = leader_ref_pos - Eigen::Vector3d(config.Leader_dX,config.Leader_dY,config.Leader_dZ);
 
         
         if(config.mirroring_x){
