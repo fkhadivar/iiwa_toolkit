@@ -5,19 +5,19 @@ options:
   filter_gain: 0.2
 
 control:
-    dsGainPos: 5.0
-    lambda0Pos: 30.0
-    lambda1Pos: 30.0
+    dsGainPos: 6.0
+    lambda0Pos: 40.0
+    lambda1Pos: 40.0
     dsGainOri: 5.0
-    lambda0Ori: 5.0
+    lambda0Ori: 6.0
     lambda1Ori: 2.75
-    mass_ee: 0.01
+    mass_ee: 0.02
 
 target:
-    pos: [0.5, 0.0, 0.2]
+    pos: [0.5, 0.0, 0.28]
     quat: [0.7071068, 0.0, 0.7071068,  0.0]
     # quat: [0.7071068, -0.7071068, 0.0, 0.0]
 
 
 leader:
-    pos: [1.2, 0., 0.0]
+    pos: [1.2, 0., 0.25]

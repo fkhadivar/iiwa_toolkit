@@ -41,7 +41,7 @@ namespace environs{
         size_t counter = 0;
         const size_t max_count = 500;
         double filter_gain = 0.3;
-        double filter_gain_static = 0.01;
+        double filter_gain_static = 1e-10;
         double dt = 0.005;
         Eigen::Vector3d plotVar = Eigen::Vector3d::Zero();
         environs::object addObject();

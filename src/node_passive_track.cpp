@@ -357,7 +357,7 @@ int main (int argc, char **argv)
 
     Options options;
 
-    while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Wating for the option setting");}
+    while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Waiting for the option setting");}
 
 
     std::unique_ptr<IiwaRosMaster> IiwaTrack = std::make_unique<IiwaRosMaster>(n,frequency,options);

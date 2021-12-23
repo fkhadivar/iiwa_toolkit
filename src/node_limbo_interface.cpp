@@ -55,14 +55,6 @@ class IiwaRosMaster
     _n(n), _loopRate(frequency), _dt(1.0f/frequency),_options(options){
         _stop =false;
 
-        //TODO clean the optitrack code
-        _optitrack_initiated = true;
-        _optitrack_ready = true;
-        if(_options.is_optitrack_on){
-            _optitrack_initiated = false;
-            _optitrack_ready = false;
-        }
-
     }
 
     ~IiwaRosMaster(){}
@@ -124,25 +116,24 @@ class IiwaRosMaster
     // run node
     void run(){
         while(!_stop && ros::ok()){ 
-            if (_optitrack_initiated){
-                _mutex.lock();
-                if(_optitrack_ready){
+            _mutex.lock();
+            
 
-                    // _controller->setInput(_feedback.jnt_position, _feedback.jnt_velocity,_feedback.jnt_torque);
-                    // std::cout << "pos: " << _feedback.jnt_position.transpose() << "\n";
-                    // std::cout << "vel: " << _feedback.jnt_velocity.transpose() << "\n";
-                    // std::cout << "trq: " << _feedback.jnt_torque.transpose() << "\n";
-                    // std::cout << "cmd Trq: " << command_trq.transpose() << "\n";
-                    publishCommandTorque(command_trq);
-                    publishPlotVariable(command_plt);
+            // _controller->setInput(_feedback.jnt_position, _feedback.jnt_velocity,_feedback.jnt_torque);
+            // std::cout << "pos: " << _feedback.jnt_position.transpose() << "\n";
+            // std::cout << "vel: " << _feedback.jnt_velocity.transpose() << "\n";
+            // std::cout << "trq: " << _feedback.jnt_torque.transpose() << "\n";
+            // std::cout << "cmd Trq: " << command_trq.transpose() << "\n";
+            publishCommandTorque(command_trq);
+            publishPlotVariable(command_plt);
 
-                    // publishPlotVariable(_controller->getPlotVariable());
-                    
-                }else{ optitrackInitialization(); }
-                _mutex.unlock();
-            }
-        ros::spinOnce();
-        _loopRate.sleep();
+            // publishPlotVariable(_controller->getPlotVariable());
+                
+            
+            _mutex.unlock();
+                
+            ros::spinOnce();
+            _loopRate.sleep();
         }
         publishCommandTorque(Eigen::VectorXd::Zero(No_JOINTS));
         ros::spinOnce();
@@ -172,9 +163,6 @@ class IiwaRosMaster
     Eigen::VectorXd command_trq = Eigen::VectorXd(No_JOINTS);
     Eigen::VectorXd command_plt = Eigen::VectorXd(3);
 
-
-    bool _optitrack_initiated;         // Monitor first optitrack markers update
-    bool _optitrack_ready;             // Check if all markers position is received
     bool _stop;                        // Check for CTRL+C
     std::mutex _mutex;
 
@@ -220,8 +208,7 @@ class IiwaRosMaster
         _plotPublisher.publish(_plotVar);
     }
     //TODO clean the optitrack
-    void optitrackInitialization(){
-    }
+
     void updateOptitrack(const geometry_msgs::PoseStamped::ConstPtr& msg, int k){
     }
     uint16_t checkTrackedMarker(float a, float b){
@@ -237,7 +224,6 @@ int main (int argc, char **argv)
     ros::NodeHandle n;
 
     Options options;
-    while(!n.getParam("options/is_optitrack_on", options.is_optitrack_on)){ROS_INFO("waiting ....");};
     while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("waiting ....");};
 
 
