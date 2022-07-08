@@ -29,6 +29,7 @@
 
 #include <Eigen/Dense>
 #include <iiwa_tools/iiwa_tools.h>
+#include <RBDyn/FD.h>
 #include "thirdparty/Utils.h"
 
 
@@ -55,10 +56,15 @@ struct Robot
     Eigen::MatrixXd jacobPos    = Eigen::MatrixXd(3, 7);
     Eigen::MatrixXd jacobAng    = Eigen::MatrixXd(3, 7);
 
-    Eigen::MatrixXd pseudo_inv_jacob       = Eigen::MatrixXd(6,6);
-    Eigen::MatrixXd pseudo_inv_jacobJnt       = Eigen::MatrixXd(7,7);
-    Eigen::MatrixXd pseudo_inv_jacobPos    = Eigen::MatrixXd(3,3);
+    Eigen::MatrixXd pseudo_inv_jacob        = Eigen::MatrixXd(6,6);
+    Eigen::MatrixXd pseudo_inv_jacobJnt     = Eigen::MatrixXd(7,7);
+    Eigen::MatrixXd pseudo_inv_jacobPos     = Eigen::MatrixXd(3,3);
     Eigen::MatrixXd pseudo_inv_jacobPJnt    = Eigen::MatrixXd(7,7);
+    Eigen::MatrixXd joint_inertia           = Eigen::MatrixXd(7,7);
+    Eigen::MatrixXd task_inertia            = Eigen::MatrixXd(6,6);
+    Eigen::MatrixXd task_inertiaPos         = Eigen::MatrixXd(3,3);
+    Eigen::MatrixXd task_inertiaAng         = Eigen::MatrixXd(3,3);
+
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
@@ -107,6 +113,7 @@ class PassiveControl
 private:
     Robot _robot;
     iiwa_tools::IiwaTools _tools;
+    rbd::ForwardDynamics _fdyn;
 
     bool first = true;
     bool is_just_velocity = false;
@@ -116,6 +123,7 @@ private:
 
     Eigen::VectorXd _trq_cmd = Eigen::VectorXd::Zero(7);
     void computeTorqueCmd();
+   
     std::unique_ptr<PassiveDS> dsContPos;
     std::unique_ptr<PassiveDS> dsContOri;
     
@@ -145,6 +153,9 @@ public:
     Eigen::Vector3d getEEAngVel();
 
     Eigen::Vector4d getEEquat();
+    
+    Eigen::MatrixXd getTaskInertiaPos();
+    Eigen::MatrixXd jointToTaskInertia(const Eigen::MatrixXd& Jac, const Eigen::MatrixXd& joint_inertia);
 
 };
 

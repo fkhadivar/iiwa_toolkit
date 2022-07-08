@@ -146,6 +146,9 @@ void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vecto
     _robot.pseudo_inv_jacobPos = pseudo_inverse(Eigen::MatrixXd(_robot.jacobPos * _robot.jacobPos.transpose()) );
     // _robot.pseudo_inv_jacobPJnt = pseudo_inverse(Eigen::MatrixXd(_robot.jacobPos.transpose() * _robot.jacobPos ) );
     _robot.pseudo_inv_jacobJnt = pseudo_inverse(Eigen::MatrixXd(_robot.jacob.transpose() * _robot.jacob ) );
+
+    _robot.joint_inertia = _tools.get_joint_inertia(robot_state);
+    _robot.task_inertiaPos = jointToTaskInertia(_robot.jacobPos, _robot.joint_inertia);
     
     auto ee_state = _tools.perform_fk(robot_state);
     _robot.ee_pos = ee_state.translation;
@@ -174,6 +177,16 @@ Eigen::Vector3d PassiveControl::getEEVel(){
 }
 Eigen::Vector3d PassiveControl::getEEAngVel(){
     return _robot.ee_angVel;
+}
+
+Eigen::MatrixXd PassiveControl::jointToTaskInertia(const Eigen::MatrixXd& Jac, const Eigen::MatrixXd& joint_inertia){
+    Eigen::MatrixXd task_inertia_inverse = Jac * joint_inertia.inverse() * Jac.transpose();
+    Eigen::MatrixXd task_inertia = task_inertia_inverse.inverse();
+    return task_inertia;
+}
+
+Eigen::MatrixXd PassiveControl::getTaskInertiaPos(){
+    return _robot.task_inertiaPos;
 }
 
 

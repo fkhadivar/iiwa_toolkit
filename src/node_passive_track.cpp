@@ -24,6 +24,7 @@
 #include "sensor_msgs/JointState.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Inertia.h"
 
 #include "ros/ros.h"
 #include <ros/package.h>
@@ -86,6 +87,7 @@ class IiwaRosMaster
         _TrqCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/TorqueController/command",1);
         _EEPosePublisher = _n.advertise<geometry_msgs::Pose>("/iiwa/ee_info/Pose",1);
         _EEVelPublisher = _n.advertise<geometry_msgs::Twist>("/iiwa/ee_info/Vel",1);
+        _InertiaPublisher = _n.advertise<geometry_msgs::Inertia>("/iiwa/Inertia/taskPos", 1);
 
         // Get the URDF XML from the parameter server
         std::string urdf_string, full_param;
@@ -159,6 +161,7 @@ class IiwaRosMaster
                 publishCommandTorque(_controller->getCmd());
                 publishPlotVariable(command_plt);
                 publishEEInfo();
+                publishInertiaInfo();
 
                 // publishPlotVariable(_controller->getPlotVariable());
                 
@@ -191,6 +194,7 @@ class IiwaRosMaster
     ros::Publisher _TrqCmdPublisher;
     ros::Publisher _EEPosePublisher;
     ros::Publisher _EEVelPublisher;
+    ros::Publisher _InertiaPublisher;
 
     ros::Publisher _plotPublisher;
 
@@ -278,6 +282,24 @@ class IiwaRosMaster
         _EEPosePublisher.publish(msg1);
         _EEVelPublisher.publish(msg2);
     }
+
+    void publishInertiaInfo(){
+        // Publishes task inertia in position only
+        geometry_msgs::Inertia msg1;
+
+        Eigen::MatrixXd task_inertia = _controller->getTaskInertiaPos();
+
+        msg1.ixx = task_inertia(0, 0);
+        msg1.ixy = task_inertia(0, 1);
+        msg1.ixz = task_inertia(0, 2);
+        msg1.iyy = task_inertia(1, 1);
+        msg1.iyz = task_inertia(1, 2);
+        msg1.izz = task_inertia(2, 2);
+
+        _InertiaPublisher.publish(msg1);
+    }
+
+
     //TODO clean the optitrack
     void updateControlPos(const geometry_msgs::Pose::ConstPtr& msg){
         Eigen::Vector3d pos;
