@@ -16,6 +16,7 @@
 //|    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //|    GNU General Public License for more details.
 //|
+
 #ifndef __PASSIVE_CONTROL__
 #define __PASSIVE_CONTROL__
 #include "ros/ros.h"

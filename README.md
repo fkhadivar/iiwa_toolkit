@@ -1,14 +1,14 @@
-iiwa_toolkit
-========
- 
+# iiwa_toolkit
+This is a toolbox to control KUKA LBR iiwa in task space.
+It provides controller  to compliantly control the end-effector of the robot. 
 
 Requirements
 -----------
 
-iiwa_toolkit requires several packages to be installed in order to work properly:
+iiwa_toolkit requires only one package to be installed in order to work properly:
 
 * [ROS] - ROS: tested in **Melodic** and **Kinetic**; *Indigo* should work also
-* [iiwa_ros] 
+* [iiwa_ros]{https://github.com/epfl-lasa/iiwa_ros} 
 
 
 Compilation
@@ -40,21 +40,13 @@ roslaunch iiwa_toolkit passive_track_gazebo.launch
 Both of the above commands will launch IIWA in **torque-control mode**. To change the control mode (e.g., position-control), please edit the launch files to select the appropriate controller.
 
 
-To do 
---------------
-- add launcher with rqt plot
-Documentation
----------------------
-
-**UNDER CONSTRUCTION**
-
 Contributing
 ---------------------
-TBW ...
+...
 
 Acknowledgements
 ---------------------
-TBW ...
+..
 
 Authors/Maintainers
 ---------------------

@@ -17,6 +17,7 @@
 //|    GNU General Public License for more details.
 //|
 
+
 #include "passive_control.h"
 
 PassiveDS::PassiveDS(const double& lam0, const double& lam1):eigVal0(lam0),eigVal1(lam1){
