@@ -4,11 +4,13 @@
     <include file="$(find iiwa_driver)/launch/iiwa_bringup.launch">
     </include>
 
+    <!-- <include file="$(find allegro_toolkit)/launch/power_grasp.launch">
+    </include> -->
+
     <node name="limbo_interfacing" pkg="iiwa_toolkit" type="limbo_interface" output="screen">
     </node>
 
     <rosparam file="$(find iiwa_toolkit)/config/limbo_interface_params.yaml" command="load"/>
-
     <!-- <node name="plotter"
             pkg="rqt_plot"
             type="rqt_plot"

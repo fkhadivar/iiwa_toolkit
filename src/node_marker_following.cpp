@@ -318,23 +318,9 @@ class IiwaRosMaster
         leader_pos = leader_ref_pos - Eigen::Vector3d(config.Leader_dX,config.Leader_dY,config.Leader_dZ);
 
         
-        if(config.mirroring_x){
-            mirror_dir(0,0) = -1.;
-        }else{
-            mirror_dir(0,0) = 1.;
-        }
-
-        if(config.mirroring_y){
-            mirror_dir(1,1) = -1.;
-        }else{
-            mirror_dir(1,1) = 1.;
-        }
-
-        if(config.mirroring_z){
-            mirror_dir(2,2) = -1.;
-        }else{
-            mirror_dir(2,2) = 1.;
-        }
+        if(config.mirroring_x){mirror_dir(0,0) = -1.;}else{mirror_dir(0,0) = 1.;}
+        if(config.mirroring_y){mirror_dir(1,1) = -1.;}else{mirror_dir(1,1) = 1.;}
+        if(config.mirroring_z){mirror_dir(2,2) = -1.;}else{mirror_dir(2,2) = 1.;}
 
         Eigen::Vector4d q_x = Eigen::Vector4d::Zero();
         q_x(0) = std::cos(config.dX_des_angle/2);

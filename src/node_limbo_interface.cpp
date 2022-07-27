@@ -103,7 +103,7 @@ class IiwaRosMaster
         // _n.param<std::string>("params/end_effector", end_effector, "iiwa_link_ee");
         // // Initialize iiwa tools
         // _tools->init_rbdyn(urdf_string, end_effector);
-        size_t max_iteration = 5;
+        // size_t max_iteration = 5;
         // _controller = std::make_unique<control::TrackControl>(max_iteration);
 
 
@@ -124,14 +124,30 @@ class IiwaRosMaster
             // std::cout << "vel: " << _feedback.jnt_velocity.transpose() << "\n";
             // std::cout << "trq: " << _feedback.jnt_torque.transpose() << "\n";
             // std::cout << "cmd Trq: " << command_trq.transpose() << "\n";
+            if(!receiveing_msg){
+                Eigen::VectorXd _jp(7);
+                _jp << M_PI / 2., .3, 0., -M_PI / 2., 0., -.8, 0.;
+                set_default_position(_jp);
+            }
+            //--- second joint friction:
+            if (std::abs(_feedback.jnt_position[1]) >0.6)
+            {
+                double rand_trq = 1-2*( (double)std::rand()/RAND_MAX);
+                command_trq[1] += 4*rand_trq; // pour lutter contre joint friction
+                // std::cout << " second joints torque:  " << command_trq[1] << "randon torque added:  " << 5*rand_trq << "\n";
+            }
+            
             publishCommandTorque(command_trq);
             publishPlotVariable(command_plt);
+            // publishPlotVariable(command_trq.tail(3));
+
 
             // publishPlotVariable(_controller->getPlotVariable());
                 
             
             _mutex.unlock();
-                
+
+            receiveing_msg = false;    
             ros::spinOnce();
             _loopRate.sleep();
         }
@@ -164,12 +180,29 @@ class IiwaRosMaster
     Eigen::VectorXd command_plt = Eigen::VectorXd(3);
 
     bool _stop;                        // Check for CTRL+C
+    bool receiveing_msg = false;
     std::mutex _mutex;
 
     // std::unique_ptr<control::TrackControl> _controller;
 
   private:
+    void set_default_position(const Eigen::VectorXd& jointPose){
+        Eigen::VectorXd gain_i = Eigen::VectorXd(7);
+        gain_i << 30, 300, 75, 150, 30, 40, 5;
+        Eigen::MatrixXd A = Eigen::MatrixXd::Identity(gain_i.size(), gain_i.size());
+        A.diagonal() = gain_i;
 
+        Eigen::VectorXd _erj = jointPose - _feedback.jnt_position;
+        for (size_t i = 0; i < _erj.size(); i++)
+        {
+            if(abs(_erj[i]) > .5){
+                _erj[i] *= 0.5/abs(_erj[i]); 
+            }
+        }
+        
+        command_trq = A * _erj - 0.2 * A * _feedback.jnt_velocity;
+
+    }
     void updateRobotStates(const sensor_msgs::JointState::ConstPtr &msg, int k){
        for (int i = 0; i < No_JOINTS; i++){
             _feedback.jnt_position[i] = (double)msg->position[i];
@@ -182,6 +215,7 @@ class IiwaRosMaster
        for (int i = 0; i < No_JOINTS; i++){
             command_trq[i] = (double)msg->data[i];
         }
+        receiveing_msg = true;
     }
     
     void updatePlotVariable(const std_msgs::Float64MultiArray::ConstPtr &msg, int k){
@@ -209,10 +243,10 @@ class IiwaRosMaster
     }
     //TODO clean the optitrack
 
-    void updateOptitrack(const geometry_msgs::PoseStamped::ConstPtr& msg, int k){
-    }
-    uint16_t checkTrackedMarker(float a, float b){
-    }
+    // void updateOptitrack(const geometry_msgs::PoseStamped::ConstPtr& msg, int k){
+    // }
+    // uint16_t checkTrackedMarker(float a, float b){
+    // }
 };
 
 //****************************************************
