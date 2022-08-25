@@ -149,7 +149,6 @@ void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vecto
 
     _robot.joint_inertia = _tools.get_joint_inertia(robot_state);
     _robot.task_inertiaPos = jointToTaskInertia(_robot.jacobPos, _robot.joint_inertia);
-    
     auto ee_state = _tools.perform_fk(robot_state);
     _robot.ee_pos = ee_state.translation;
     _robot.ee_quat[0] = ee_state.orientation.w();
