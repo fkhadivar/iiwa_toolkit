@@ -64,6 +64,8 @@ struct Robot
     Eigen::MatrixXd task_inertia            = Eigen::MatrixXd(6,6);
     Eigen::MatrixXd task_inertiaPos         = Eigen::MatrixXd(3,3);
     Eigen::MatrixXd task_inertiaAng         = Eigen::MatrixXd(3,3);
+    Eigen::VectorXd dir_task_inertia_grad   = Eigen::VectorXd(7);
+    Eigen::Vector3d direction = {0.0, 1.0, 0.0};
 
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -123,6 +125,7 @@ private:
 
     Eigen::VectorXd _trq_cmd = Eigen::VectorXd::Zero(7);
     void computeTorqueCmd();
+    Eigen::VectorXd computeInertiaTorqueNull(float dir_lambda, Eigen::Vector3d& direction);
    
     std::unique_ptr<PassiveDS> dsContPos;
     std::unique_ptr<PassiveDS> dsContOri;
@@ -155,6 +158,7 @@ public:
     Eigen::Vector4d getEEquat();
     
     Eigen::MatrixXd getTaskInertiaPos();
+    Eigen::VectorXd getDirInertiaGrad(iiwa_tools::RobotState &current_state, Eigen::Vector3d& direction);
     Eigen::MatrixXd jointToTaskInertia(const Eigen::MatrixXd& Jac, const Eigen::MatrixXd& joint_inertia);
 
 };

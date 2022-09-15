@@ -146,9 +146,12 @@ void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vecto
     _robot.pseudo_inv_jacobPos = pseudo_inverse(Eigen::MatrixXd(_robot.jacobPos * _robot.jacobPos.transpose()) );
     // _robot.pseudo_inv_jacobPJnt = pseudo_inverse(Eigen::MatrixXd(_robot.jacobPos.transpose() * _robot.jacobPos ) );
     _robot.pseudo_inv_jacobJnt = pseudo_inverse(Eigen::MatrixXd(_robot.jacob.transpose() * _robot.jacob ) );
+    
 
     _robot.joint_inertia = _tools.get_joint_inertia(robot_state);
     _robot.task_inertiaPos = jointToTaskInertia(_robot.jacobPos, _robot.joint_inertia);
+    _robot.dir_task_inertia_grad = getDirInertiaGrad(robot_state, _robot.direction);
+    
     auto ee_state = _tools.perform_fk(robot_state);
     _robot.ee_pos = ee_state.translation;
     _robot.ee_quat[0] = ee_state.orientation.w();
@@ -186,6 +189,37 @@ Eigen::MatrixXd PassiveControl::jointToTaskInertia(const Eigen::MatrixXd& Jac, c
 
 Eigen::MatrixXd PassiveControl::getTaskInertiaPos(){
     return _robot.task_inertiaPos;
+}
+
+Eigen::VectorXd PassiveControl::getDirInertiaGrad(iiwa_tools::RobotState &current_state, Eigen::Vector3d &direction){
+    Eigen::MatrixXd task_inertia = _robot.task_inertiaPos;
+    double dir_inertia = direction.transpose() * task_inertia * direction;
+    Eigen::VectorXd grad = Eigen::VectorXd(7);
+    Eigen::MatrixXd duplicate_joint_inertia = Eigen::MatrixXd(7,7);
+    Eigen::MatrixXd duplicate_task_inertiaPos = Eigen::MatrixXd(6,6);
+    Eigen::MatrixXd jacob = Eigen::MatrixXd(6, 7);
+    Eigen::MatrixXd jacob_drv = Eigen::MatrixXd(6, 7);
+    Eigen::MatrixXd jacobPos = Eigen::MatrixXd(3, 7);
+    double duplicate_dir_inertia;
+
+    // create a duplicate current state
+    iiwa_tools::RobotState duplicate_state = current_state;
+    double dq = 0.001;
+    for(int i = 0; i < 7; ++i){
+        duplicate_state.position[i]+=dq;
+        duplicate_joint_inertia = _tools.get_joint_inertia(duplicate_state);
+
+        std::tie(jacob, jacob_drv) = _tools.jacobians(duplicate_state);
+        jacobPos = jacob.bottomRows(3);
+        duplicate_task_inertiaPos = jointToTaskInertia(jacobPos, duplicate_joint_inertia);
+        duplicate_dir_inertia = direction.transpose() * duplicate_task_inertiaPos * direction;
+
+        grad[i] = (duplicate_dir_inertia - dir_inertia) / dq;
+
+        duplicate_state.position[i]-=dq;
+    }
+
+    return grad;
 }
 
 
@@ -229,6 +263,19 @@ void PassiveControl::set_desired_velocity(const Eigen::Vector3d& vel){
 void PassiveControl::set_load(const double& mass ){
     load_added = mass;
 }
+
+Eigen::VectorXd PassiveControl::computeInertiaTorqueNull(float des_dir_lambda, Eigen::Vector3d& des_vel){
+    
+    Eigen::Vector3d direction = des_vel / des_vel.norm();
+    float inertia_error = direction.transpose() * _robot.task_inertiaPos * direction - des_dir_lambda;
+    std::cout << "inertia dir: " <<  direction.transpose() * _robot.task_inertiaPos * direction << std::endl; 
+    // std::cout << "inertia error: " <<  inertia_error  << std::endl; 
+    Eigen::VectorXd null_torque = 1.0 * _robot.dir_task_inertia_grad * inertia_error;
+
+    // std::cout << "torque: " << null_torque << std::endl;
+    return null_torque;
+}
+
 void PassiveControl::computeTorqueCmd(){
     
     // desired position values
@@ -282,8 +329,18 @@ void PassiveControl::computeTorqueCmd(){
     // null pos control
     Eigen::MatrixXd tempMat2 =  Eigen::MatrixXd::Identity(7,7) - _robot.jacob.transpose()* _robot.pseudo_inv_jacob* _robot.jacob;
     Eigen::VectorXd nullgains = Eigen::VectorXd::Zero(7);
-    nullgains << 5.,80,10.,30,5.,2.,2.;
-    Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
+    // nullgains << 5.,80,10.,30,5.,2.,2.;
+    nullgains << 5.,15.,25.,5.,20.,40.,40.;
+    Eigen::VectorXd er_null;
+    if(!is_just_velocity){
+        er_null = 1.0*computeInertiaTorqueNull(6.0, _robot.direction);
+    }
+    else{
+        er_null = 1.0*computeInertiaTorqueNull(6.0, _robot.ee_des_vel); 
+    }
+    // Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
+
+    // std::cout << "null space error is: " << er_null << std::endl;
     if(er_null.norm()<1.5){
         first = false;
     }
