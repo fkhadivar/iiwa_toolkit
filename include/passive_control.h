@@ -31,6 +31,7 @@
 #include <iiwa_tools/iiwa_tools.h>
 #include <RBDyn/FD.h>
 #include "thirdparty/Utils.h"
+#include "qp_control.h"
 
 
 struct Robot
@@ -116,6 +117,7 @@ private:
     Robot _robot;
     iiwa_tools::IiwaTools _tools;
     rbd::ForwardDynamics _fdyn;
+    std::unique_ptr<QP_Control> _qp_controller;
 
     bool first = true;
     bool is_just_velocity = false;
@@ -125,6 +127,7 @@ private:
 
     Eigen::VectorXd _trq_cmd = Eigen::VectorXd::Zero(7);
     void computeTorqueCmd();
+
     Eigen::VectorXd computeInertiaTorqueNull(float dir_lambda, Eigen::Vector3d& direction);
    
     std::unique_ptr<PassiveDS> dsContPos;
@@ -146,7 +149,8 @@ public:
     void set_ori_gains(const double& ds, const double& lambda0,const double& lambda1);
     void set_null_pos(const Eigen::VectorXd& nullPosition);
     void set_load(const double& mass);
-
+    
+    
 
     Eigen::VectorXd getCmd(){
         computeTorqueCmd();
@@ -160,6 +164,7 @@ public:
     Eigen::MatrixXd getTaskInertiaPos();
     Eigen::VectorXd getDirInertiaGrad(iiwa_tools::RobotState &current_state, Eigen::Vector3d& direction);
     Eigen::MatrixXd jointToTaskInertia(const Eigen::MatrixXd& Jac, const Eigen::MatrixXd& joint_inertia);
+    void computeJointPositionQP();
 
 };
 

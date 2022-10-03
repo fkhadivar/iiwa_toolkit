@@ -18,7 +18,7 @@
 
 #define No_JOINTS 7
 #define No_Robots 1
-struct Options
+struct Marker_Options
 {
     bool is_optitrack_on;
     double filter_gain = 0.2;
@@ -35,7 +35,7 @@ struct feedback
 class IiwaRosMaster 
 {
   public:
-    IiwaRosMaster(ros::NodeHandle &n,double frequency, Options options):
+    IiwaRosMaster(ros::NodeHandle &n,double frequency, Marker_Options options):
     _n(n), _loopRate(frequency), _dt(1.0f/frequency),_options(options){
         _stop =false;
 
@@ -209,7 +209,7 @@ class IiwaRosMaster
 
   protected:
     double _dt;
-    Options _options; 
+    Marker_Options _options; 
 
     ros::NodeHandle _n;
     ros::Rate _loopRate;
@@ -367,7 +367,7 @@ int main (int argc, char **argv)
     ros::init(argc,argv, "iiwa_marker_follower");
     ros::NodeHandle n;
 
-    Options options;
+    Marker_Options options;
     while(!n.getParam("options/is_optitrack_on", options.is_optitrack_on)){ROS_INFO("Waiting for setting the options");}
     while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Waiting for setting the options");}
 

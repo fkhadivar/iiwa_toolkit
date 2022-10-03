@@ -116,7 +116,7 @@ PassiveControl::PassiveControl(const std::string& urdf_string,const std::string&
 
     _robot.nulljnt_position << 0.0, 0.0, 0.0, -.75, 0., 0.0, 0.0;
 
-
+    _qp_controller = std::make_unique<QP_Control>();
 }
 
 PassiveControl::~PassiveControl(){}
@@ -131,6 +131,7 @@ void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vecto
     _robot.jnt_torque   = jnt_t;
 
     iiwa_tools::RobotState robot_state;
+    
     robot_state.position.resize(jnt_p.size());
     robot_state.velocity.resize(jnt_p.size());
     for (size_t i = 0; i < jnt_p.size(); i++) {
@@ -268,11 +269,8 @@ Eigen::VectorXd PassiveControl::computeInertiaTorqueNull(float des_dir_lambda, E
     
     Eigen::Vector3d direction = des_vel / des_vel.norm();
     float inertia_error = direction.transpose() * _robot.task_inertiaPos * direction - des_dir_lambda;
-    std::cout << "inertia dir: " <<  direction.transpose() * _robot.task_inertiaPos * direction << std::endl; 
-    // std::cout << "inertia error: " <<  inertia_error  << std::endl; 
     Eigen::VectorXd null_torque = 1.0 * _robot.dir_task_inertia_grad * inertia_error;
 
-    // std::cout << "torque: " << null_torque << std::endl;
     return null_torque;
 }
 
@@ -365,5 +363,16 @@ void PassiveControl::computeTorqueCmd(){
     // Gravity Compensationn
     // the gravity compensation should've been here, but a server form iiwa tools is doing the job.
    
+
+}
+
+void PassiveControl::computeJointPositionQP(){
+     
+
+    Eigen::MatrixXd Hessian = _robot.jacobPos.transpose() * _robot.jacobPos;
+    Eigen::VectorXd linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel;
+    // std::cout << "linear: " << linear << std::endl;
+
+    _qp_controller->optimize(Hessian, linear);
 
 }

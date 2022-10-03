@@ -38,7 +38,7 @@
 #define No_Robots 1
 #define TOTAL_No_MARKERS 2
 
-struct Options
+struct Passive_Options
 {
     std::string control_mode;
     bool is_optitrack_on;
@@ -56,7 +56,7 @@ struct feedback
 class IiwaRosMaster 
 {
   public:
-    IiwaRosMaster(ros::NodeHandle &n,double frequency, Options options):
+    IiwaRosMaster(ros::NodeHandle &n,double frequency, Passive_Options options):
     _n(n), _loopRate(frequency), _dt(1.0f/frequency),_options(options){
         _stop =false;
 
@@ -85,6 +85,7 @@ class IiwaRosMaster
             boost::bind(&IiwaRosMaster::updateControlVel,this,_1),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
 
         _TrqCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/TorqueController/command",1);
+        _JntPosCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/PositionController/command",1);
         _EEPosePublisher = _n.advertise<geometry_msgs::Pose>("/iiwa/ee_info/Pose",1);
         _EEVelPublisher = _n.advertise<geometry_msgs::Twist>("/iiwa/ee_info/Vel",1);
         _InertiaPublisher = _n.advertise<geometry_msgs::Inertia>("/iiwa/Inertia/taskPos", 1);
@@ -158,7 +159,9 @@ class IiwaRosMaster
         while(!_stop && ros::ok()){ 
             _mutex.lock();
                 _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
+                _controller->computeJointPositionQP();
                 publishCommandTorque(_controller->getCmd());
+                // publishCommandJointPosition();
                 publishPlotVariable(command_plt);
                 publishEEInfo();
                 publishInertiaInfo();
@@ -178,7 +181,7 @@ class IiwaRosMaster
 
   protected:
     double _dt;
-    Options _options; 
+    Passive_Options _options; 
 
     ros::NodeHandle _n;
     ros::Rate _loopRate;
@@ -192,6 +195,7 @@ class IiwaRosMaster
     ros::Subscriber _subOptitrack[TOTAL_No_MARKERS];  // optitrack markers pose
 
     ros::Publisher _TrqCmdPublisher;
+    ros::Publisher _JntPosCmdPublisher;
     ros::Publisher _EEPosePublisher;
     ros::Publisher _EEVelPublisher;
     ros::Publisher _InertiaPublisher;
@@ -231,7 +235,6 @@ class IiwaRosMaster
             _feedback.jnt_velocity[i] = (double)msg->velocity[i];
             _feedback.jnt_torque[i]   = (double)msg->effort[i];
         }
-        // std::cout << "joint ps : " << _feedback.jnt_position.transpose() << "\n";
 
     }
     
@@ -255,6 +258,16 @@ class IiwaRosMaster
             for(int i = 0; i < No_JOINTS; i++)
                 _cmd_jnt_torque.data[i] = cmdTrq[i];
             _TrqCmdPublisher.publish(_cmd_jnt_torque);
+        }
+    }
+    void publishCommandJointPosition(const Eigen::VectorXd& cmdJntPos){
+        std_msgs::Float64MultiArray _cmd_jnt_position;
+        _cmd_jnt_position.data.resize(No_JOINTS);
+
+        if (cmdJntPos.size() == No_JOINTS){
+            for(int i = 0; i < No_JOINTS; i++)
+                _cmd_jnt_position.data[i] = cmdJntPos[i];
+            _JntPosCmdPublisher.publish(_cmd_jnt_position);
         }
     }
     void publishPlotVariable(const Eigen::VectorXd& pltVar){
@@ -377,7 +390,7 @@ int main (int argc, char **argv)
     ros::init(argc,argv, "iiwa_passive_track");
     ros::NodeHandle n;
 
-    Options options;
+    Passive_Options options;
 
     while(!n.getParam("options/filter_gain", options.filter_gain)){ROS_INFO("Waiting for the option setting");}
 

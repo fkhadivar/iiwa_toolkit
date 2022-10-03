@@ -1,5 +1,6 @@
 <launch>
     <include file="$(find iiwa_gazebo)/launch/iiwa_gazebo.launch">
+    <arg name="controller" value="PositionController" />
     </include>
 
     <node name="passive_tracking" pkg="iiwa_toolkit" type="passive_track" output="screen">
