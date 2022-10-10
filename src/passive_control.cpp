@@ -116,7 +116,6 @@ PassiveControl::PassiveControl(const std::string& urdf_string,const std::string&
 
     _robot.nulljnt_position << 0.0, 0.0, 0.0, -.75, 0., 0.0, 0.0;
 
-    _qp_controller = std::make_unique<QP_Control>();
 }
 
 PassiveControl::~PassiveControl(){}
@@ -363,16 +362,5 @@ void PassiveControl::computeTorqueCmd(){
     // Gravity Compensationn
     // the gravity compensation should've been here, but a server form iiwa tools is doing the job.
    
-
-}
-
-void PassiveControl::computeJointPositionQP(){
-     
-
-    Eigen::MatrixXd Hessian = _robot.jacobPos.transpose() * _robot.jacobPos;
-    Eigen::VectorXd linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel;
-    // std::cout << "linear: " << linear << std::endl;
-
-    _qp_controller->optimize(Hessian, linear);
 
 }

@@ -159,9 +159,7 @@ class IiwaRosMaster
         while(!_stop && ros::ok()){ 
             _mutex.lock();
                 _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
-                _controller->computeJointPositionQP();
                 publishCommandTorque(_controller->getCmd());
-                // publishCommandJointPosition();
                 publishPlotVariable(command_plt);
                 publishEEInfo();
                 publishInertiaInfo();
