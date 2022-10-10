@@ -126,8 +126,13 @@ class IiwaRosMaster
         while(!_n.getParam("control/lambda1Pos",lambda1_pos)){ROS_INFO("Wating For the Parameter lambda1Pos");}
         while(!_n.getParam("control/lambda0Ori",lambda0_ori)){ROS_INFO("Wating For the Parameter lambda0Ori");}
         while(!_n.getParam("control/lambda1Ori",lambda1_ori)){ROS_INFO("Wating For the Parameter lambda1Ori");}
+        while(!_n.getParam("target_inertia/Ixx",Ixx)){ROS_INFO("Wating For the Parameter Ixx");}
+        while(!_n.getParam("target_inertia/Ixy",Ixy)){ROS_INFO("Wating For the Parameter Ixy");}
+        while(!_n.getParam("target_inertia/Ixz",Ixz)){ROS_INFO("Wating For the Parameter Ixz");}
+        while(!_n.getParam("target_inertia/Iyy",Iyy)){ROS_INFO("Wating For the Parameter Iyy");}
+        while(!_n.getParam("target_inertia/Iyz",Iyz)){ROS_INFO("Wating For the Parameter Iyz");}
+        while(!_n.getParam("target_inertia/Izz",Izz)){ROS_INFO("Wating For the Parameter Izz");}
         
-
         double angle0 = 0.5*M_PI;
         des_quat[0] = (std::cos(angle0/2));
         des_quat.segment(1,3) = (std::sin(angle0/2))* Eigen::Vector3d::UnitY();
@@ -139,11 +144,21 @@ class IiwaRosMaster
         for (size_t i = 0; i < des_quat.size(); i++)
             des_quat(i) = dquat[i]; 
 
-        
-        
+        des_inertia(0,0) = Ixx;
+        des_inertia(0,1) = Ixy;
+        des_inertia(0,2) = Ixz;
+        des_inertia(1,0) = Ixy;
+        des_inertia(1,1) = Iyy;
+        des_inertia(1,2) = Iyz;
+        des_inertia(2,0) = Ixz;
+        des_inertia(2,1) = Iyz;
+        des_inertia(2,2) = Izz;
+
+        _controller->set_desired_inertia(des_inertia);        
         _controller->set_desired_pose(des_pos,des_quat);
         _controller->set_pos_gains(ds_gain_pos,lambda0_pos,lambda1_pos);
         _controller->set_ori_gains(ds_gain_ori,lambda0_ori,lambda1_ori);
+        
         // plotting
         _plotPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/plotvar",1);
         
@@ -159,11 +174,7 @@ class IiwaRosMaster
         while(!_stop && ros::ok()){ 
             _mutex.lock();
                 _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
-                Eigen::VectorXd joint_position = _controller->computeJointVelocityQP(_dt);
-                std::cout << "joint position: " << std::endl;
-                std::cout << _feedback.jnt_position << std::endl;
-                // std::cout << "joint vel: " << joint_velocity << std::endl;
-                // Eigen::VectorXd ref_joint_position = _feedback.jnt_position + joint_velocity * _dt;
+                Eigen::VectorXd joint_position = _controller->computeJointPositionQP(_dt);
                 // publishCommandTorque(_controller->getCmd());
                 publishCommandJointPosition(joint_position);
                 publishPlotVariable(command_plt);
@@ -226,6 +237,9 @@ class IiwaRosMaster
     double lambda1_pos;
     double lambda0_ori;
     double lambda1_ori;
+    double Ixx, Ixy, Ixz, Iyy, Iyz, Izz;
+
+    Eigen::MatrixXd des_inertia = Eigen::MatrixXd(3,3);
     Eigen::Vector3d des_pos = {0.8 , 0., 0.3}; 
     Eigen::Vector4d des_quat = Eigen::Vector4d::Zero();
 

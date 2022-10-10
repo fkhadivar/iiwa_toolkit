@@ -1,0 +1,7 @@
+target_inertia:
+    Ixx: 4.0
+    Ixy: 1.0
+    Ixz: 1.0
+    Iyy: 3.0
+    Iyz: 2.0
+    Izz: 3.0

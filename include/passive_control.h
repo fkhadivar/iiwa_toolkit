@@ -49,6 +49,7 @@ struct Robot
 
     Eigen::Vector3d ee_des_pos, ee_des_vel, ee_des_acc, ee_des_angVel, ee_des_angAcc;
     Eigen::Vector4d ee_des_quat;
+    Eigen::MatrixXd des_inertia;
 
 
     Eigen::MatrixXd jacob       = Eigen::MatrixXd(6, 7);
@@ -144,6 +145,7 @@ public:
     void set_desired_position(const Eigen::Vector3d& pos);
     void set_desired_quat(const Eigen::Vector4d& quat);
     void set_desired_velocity(const Eigen::Vector3d& vel);
+    void set_desired_inertia(const Eigen::MatrixXd &inertia);
 
 
     void set_pos_gains(const double& ds, const double& lambda0,const double& lambda1);
@@ -166,7 +168,7 @@ public:
     Eigen::VectorXd getDirInertiaGrad(iiwa_tools::RobotState &current_state, Eigen::Vector3d& direction);
     Eigen::VectorXd getSteinDivergenceGradient(iiwa_tools::RobotState &current_state, const Eigen::Matrix3d &des_inertia);
     Eigen::MatrixXd jointToTaskInertia(const Eigen::MatrixXd& Jac, const Eigen::MatrixXd& joint_inertia);
-    Eigen::VectorXd computeJointVelocityQP(double dt);
+    Eigen::VectorXd computeJointPositionQP(double dt);
 
 
 };

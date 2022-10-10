@@ -154,6 +154,7 @@ void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vecto
     _robot.joint_inertia = _tools.get_joint_inertia(robot_state);
     _robot.task_inertiaPos = jointToTaskInertia(_robot.jacobPos, _robot.joint_inertia);
     _robot.dir_task_inertia_grad = getDirInertiaGrad(robot_state, _robot.direction);
+    _robot.stein_distance_grad = getSteinDivergenceGradient(robot_state, _robot.des_inertia);
     
     auto ee_state = _tools.perform_fk(robot_state);
     _robot.ee_pos = ee_state.translation;
@@ -199,7 +200,7 @@ Eigen::VectorXd PassiveControl::getDirInertiaGrad(iiwa_tools::RobotState &curren
     double dir_inertia = direction.transpose() * task_inertia * direction;
     Eigen::VectorXd grad = Eigen::VectorXd(7);
     Eigen::MatrixXd duplicate_joint_inertia = Eigen::MatrixXd(7,7);
-    Eigen::MatrixXd duplicate_task_inertiaPos = Eigen::MatrixXd(6,6);
+    Eigen::MatrixXd duplicate_task_inertiaPos = Eigen::MatrixXd(3,3);
     Eigen::MatrixXd jacob = Eigen::MatrixXd(6, 7);
     Eigen::MatrixXd jacob_drv = Eigen::MatrixXd(6, 7);
     Eigen::MatrixXd jacobPos = Eigen::MatrixXd(3, 7);
@@ -228,9 +229,35 @@ Eigen::VectorXd PassiveControl::getDirInertiaGrad(iiwa_tools::RobotState &curren
 Eigen::VectorXd PassiveControl::getSteinDivergenceGradient(iiwa_tools::RobotState &current_state, const Eigen::Matrix3d &des_inertia){
     Eigen::MatrixXd task_inertia = _robot.task_inertiaPos;
     Eigen::VectorXd grad = Eigen::VectorXd(7);
-    double stein_distance =  log(abs((0.5 * task_inertia + des_inertia).determinant())) - 0.5*log(abs((task_inertia * des_inertia).determinant()));
 
-    std::cout << "distance is: " << stein_distance << std::endl;
+    double stein_distance = abs(log(abs((0.5 * task_inertia + des_inertia).determinant())) - 0.5*log(abs((task_inertia * des_inertia).determinant())));
+
+
+    std::cout << "distance is : : : : : " << stein_distance << std::endl;
+    Eigen::MatrixXd duplicate_joint_inertia = Eigen::MatrixXd(7,7);
+    Eigen::MatrixXd duplicate_task_inertia = Eigen::MatrixXd(3,3);
+    Eigen::MatrixXd jacob = Eigen::MatrixXd(6, 7);
+    Eigen::MatrixXd jacob_drv = Eigen::MatrixXd(6, 7);
+    Eigen::MatrixXd jacobPos = Eigen::MatrixXd(3, 7);
+    double duplicate_stein_distance;
+
+    iiwa_tools::RobotState duplicate_state = current_state;
+
+    double dq = 0.001;
+    
+    for(int i = 0; i < 7; ++i){
+        duplicate_state.position[i]+=dq;
+        duplicate_joint_inertia = _tools.get_joint_inertia(duplicate_state);
+
+        std::tie(jacob, jacob_drv) = _tools.jacobians(duplicate_state);
+        jacobPos = jacob.bottomRows(3);
+        duplicate_task_inertia = jointToTaskInertia(jacobPos, duplicate_joint_inertia);
+
+        duplicate_stein_distance =  abs(log(abs((0.5 * duplicate_task_inertia + des_inertia).determinant())) - 0.5*log(abs((duplicate_task_inertia * des_inertia).determinant())));
+        grad[i] = (duplicate_stein_distance - stein_distance) / dq;
+        duplicate_state.position[i]-=dq;
+    }
+
     return grad;
 }
 
@@ -269,6 +296,9 @@ void PassiveControl::set_desired_quat(const Eigen::Vector4d& quat){
 void PassiveControl::set_desired_velocity(const Eigen::Vector3d& vel){
      _robot.ee_des_vel = vel;
      is_just_velocity = true;
+}
+void PassiveControl::set_desired_inertia(const Eigen::MatrixXd& inertia){
+     _robot.des_inertia = inertia;
 }
 
 
@@ -378,7 +408,7 @@ void PassiveControl::computeTorqueCmd(){
 }
 
 
-Eigen::VectorXd PassiveControl::computeJointVelocityQP(double dt){
+Eigen::VectorXd PassiveControl::computeJointPositionQP(double dt){
 
     Eigen::MatrixXd Hessian;
     Eigen::VectorXd linear;
@@ -386,8 +416,7 @@ Eigen::VectorXd PassiveControl::computeJointVelocityQP(double dt){
     Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(7, 7);
 
     Hessian = _robot.jacobPos.transpose() * _robot.jacobPos + 0.1*identity;
-    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel;
-    // std::cout << "linear : " <<  linear.transpose() << std::endl;
+    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel + 0.2*_robot.stein_distance_grad;
 
     if(!is_just_velocity){
         // joint_velocities =  _robot.jacobPos.transpose() *_robot.pseudo_inv_jacobPos * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
