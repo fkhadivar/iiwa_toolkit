@@ -144,7 +144,9 @@ void PassiveControl::updateRobot(const Eigen::VectorXd& jnt_p,const Eigen::Vecto
     _robot.jacobAng =  _robot.jacob.topRows(3);
 
     _robot.pseudo_inv_jacob    = pseudo_inverse(Eigen::MatrixXd(_robot.jacob * _robot.jacob.transpose()) );
+    // _robot.pseudo_inv_jacobPos = _robot.jacobPos.completeOrthogonalDecomposition().pseudoInverse();
     _robot.pseudo_inv_jacobPos = pseudo_inverse(Eigen::MatrixXd(_robot.jacobPos * _robot.jacobPos.transpose()) );
+
     // _robot.pseudo_inv_jacobPJnt = pseudo_inverse(Eigen::MatrixXd(_robot.jacobPos.transpose() * _robot.jacobPos ) );
     _robot.pseudo_inv_jacobJnt = pseudo_inverse(Eigen::MatrixXd(_robot.jacob.transpose() * _robot.jacob ) );
     
@@ -220,6 +222,15 @@ Eigen::VectorXd PassiveControl::getDirInertiaGrad(iiwa_tools::RobotState &curren
         duplicate_state.position[i]-=dq;
     }
 
+    return grad;
+}
+
+Eigen::VectorXd PassiveControl::getSteinDivergenceGradient(iiwa_tools::RobotState &current_state, const Eigen::Matrix3d &des_inertia){
+    Eigen::MatrixXd task_inertia = _robot.task_inertiaPos;
+    Eigen::VectorXd grad = Eigen::VectorXd(7);
+    double stein_distance =  log(abs((0.5 * task_inertia + des_inertia).determinant())) - 0.5*log(abs((task_inertia * des_inertia).determinant()));
+
+    std::cout << "distance is: " << stein_distance << std::endl;
     return grad;
 }
 
@@ -366,13 +377,36 @@ void PassiveControl::computeTorqueCmd(){
 
 }
 
-void PassiveControl::computeJointPositionQP(){
-     
 
-    Eigen::MatrixXd Hessian = _robot.jacobPos.transpose() * _robot.jacobPos;
-    Eigen::VectorXd linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel;
-    // std::cout << "linear: " << linear << std::endl;
+Eigen::VectorXd PassiveControl::computeJointVelocityQP(double dt){
 
-    _qp_controller->optimize(Hessian, linear);
+    Eigen::MatrixXd Hessian;
+    Eigen::VectorXd linear;
+    Eigen::VectorXd joint_velocities;
+    Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(7, 7);
+
+    Hessian = _robot.jacobPos.transpose() * _robot.jacobPos + 0.1*identity;
+    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel;
+    // std::cout << "linear : " <<  linear.transpose() << std::endl;
+
+    if(!is_just_velocity){
+        // joint_velocities =  _robot.jacobPos.transpose() *_robot.pseudo_inv_jacobPos * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
+        joint_velocities =  _robot.jacobPos.transpose() * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
+
+    }
+    else{
+        if (!_qp_controller->is_initialised){            
+            _qp_controller->initialise(Hessian, linear);
+        }
+
+        joint_velocities = _qp_controller->solve(Hessian, linear);
+        
+    }
+
+    // else{
+    //     joint_velocities = _robot.jacobPos.transpose() * _robot.pseudo_inv_jacobPos * _robot.ee_des_vel;
+    // }
+
+    return _robot.jnt_position + joint_velocities*dt;
 
 }

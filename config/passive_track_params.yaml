@@ -12,3 +12,8 @@ control:
 target:
     pos: [0.3, 0.0, 0.5]
     quat: [0.7071068, -0.7071068 , 0.0,  0.0]
+
+target_inertia:
+    Ixx: 
+    Iyy: 
+    Izz: 

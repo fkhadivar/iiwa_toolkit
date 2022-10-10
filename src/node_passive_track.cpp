@@ -159,9 +159,13 @@ class IiwaRosMaster
         while(!_stop && ros::ok()){ 
             _mutex.lock();
                 _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
-                _controller->computeJointPositionQP();
-                publishCommandTorque(_controller->getCmd());
-                // publishCommandJointPosition();
+                Eigen::VectorXd joint_position = _controller->computeJointVelocityQP(_dt);
+                std::cout << "joint position: " << std::endl;
+                std::cout << _feedback.jnt_position << std::endl;
+                // std::cout << "joint vel: " << joint_velocity << std::endl;
+                // Eigen::VectorXd ref_joint_position = _feedback.jnt_position + joint_velocity * _dt;
+                // publishCommandTorque(_controller->getCmd());
+                publishCommandJointPosition(joint_position);
                 publishPlotVariable(command_plt);
                 publishEEInfo();
                 publishInertiaInfo();
@@ -189,8 +193,6 @@ class IiwaRosMaster
     ros::Subscriber _subRobotStates[No_Robots];
 
     ros::Subscriber _subControl[2];
-
-
 
     ros::Subscriber _subOptitrack[TOTAL_No_MARKERS];  // optitrack markers pose
 

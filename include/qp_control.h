@@ -16,9 +16,13 @@ using namespace optimization_lib;
 class QP_Control{
 
 public:
+    QpoasesOptimizer<SQProblem> myqp;
+
+    bool is_initialised = false;
     QP_Control();
     ~QP_Control();
-    void optimize(const Eigen::MatrixXd &H, const Eigen::VectorXd &g);
+    void initialise(const Eigen::MatrixXd &H, const Eigen::VectorXd &g);
+    Eigen::VectorXd solve(const Eigen::MatrixXd &H, const Eigen::VectorXd &g);
 
 };
 

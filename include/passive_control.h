@@ -66,6 +66,7 @@ struct Robot
     Eigen::MatrixXd task_inertiaPos         = Eigen::MatrixXd(3,3);
     Eigen::MatrixXd task_inertiaAng         = Eigen::MatrixXd(3,3);
     Eigen::VectorXd dir_task_inertia_grad   = Eigen::VectorXd(7);
+    Eigen::VectorXd stein_distance_grad     = Eigen::VectorXd(7);
     Eigen::Vector3d direction = {0.0, 1.0, 0.0};
 
     public:
@@ -163,8 +164,10 @@ public:
     
     Eigen::MatrixXd getTaskInertiaPos();
     Eigen::VectorXd getDirInertiaGrad(iiwa_tools::RobotState &current_state, Eigen::Vector3d& direction);
+    Eigen::VectorXd getSteinDivergenceGradient(iiwa_tools::RobotState &current_state, const Eigen::Matrix3d &des_inertia);
     Eigen::MatrixXd jointToTaskInertia(const Eigen::MatrixXd& Jac, const Eigen::MatrixXd& joint_inertia);
-    void computeJointPositionQP();
+    Eigen::VectorXd computeJointVelocityQP(double dt);
+
 
 };
 
