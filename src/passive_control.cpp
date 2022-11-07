@@ -327,13 +327,14 @@ void PassiveControl::computeTorqueCmd(){
     Eigen::MatrixXd tempMat2 =  Eigen::MatrixXd::Identity(7,7) - _robot.jacob.transpose()* _robot.pseudo_inv_jacob* _robot.jacob;
     Eigen::VectorXd nullgains = Eigen::VectorXd::Zero(7);
     // nullgains << 5.,80,10.,30,5.,2.,2.;
-    nullgains << 5.,15.,25.,5.,20.,40.,40.;
+    nullgains << 20.,5.,20.,10.,10.,10.,10.;
     Eigen::VectorXd er_null;
     if(!is_just_velocity){
-        er_null = 1.0*computeInertiaTorqueNull(6.0, _robot.direction);
+        er_null = _robot.jnt_position -_robot.nulljnt_position;
+        // er_null = 1.0*computeInertiaTorqueNull(2.0, _robot.direction);
     }
     else{
-        er_null = 1.0*computeInertiaTorqueNull(6.0, _robot.ee_des_vel); 
+        er_null = 1.0*computeInertiaTorqueNull(3.0, _robot.ee_des_vel); 
     }
     // Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
 
