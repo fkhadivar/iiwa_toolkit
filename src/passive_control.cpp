@@ -269,6 +269,7 @@ Eigen::VectorXd PassiveControl::computeInertiaTorqueNull(float des_dir_lambda, E
     Eigen::Vector3d direction = des_vel / des_vel.norm();
     float inertia_error = direction.transpose() * _robot.task_inertiaPos * direction - des_dir_lambda;
     Eigen::VectorXd null_torque = 1.0 * _robot.dir_task_inertia_grad * inertia_error;
+    // Eigen::VectorXd null_torque = 1.0 * _robot.dir_task_inertia_grad ;
 
     return null_torque;
 }
@@ -326,15 +327,16 @@ void PassiveControl::computeTorqueCmd(){
     // null pos control
     Eigen::MatrixXd tempMat2 =  Eigen::MatrixXd::Identity(7,7) - _robot.jacob.transpose()* _robot.pseudo_inv_jacob* _robot.jacob;
     Eigen::VectorXd nullgains = Eigen::VectorXd::Zero(7);
-    // nullgains << 5.,80,10.,30,5.,2.,2.;
-    nullgains << 20.,5.,20.,10.,10.,10.,10.;
+    nullgains << 5.,80,10.,30,5.,2.,2.;
+    // nullgains << 5.,80,30.,30,5.,2.,2.;
+    // nullgains << 20.,5.,20.,10.,10.,2.,2.;
     Eigen::VectorXd er_null;
     if(!is_just_velocity){
         er_null = _robot.jnt_position -_robot.nulljnt_position;
-        // er_null = 1.0*computeInertiaTorqueNull(2.0, _robot.direction);
+        // er_null = 1.0*computeInertiaTorqueNull(10.0, _robot.direction);
     }
     else{
-        er_null = 1.0*computeInertiaTorqueNull(3.0, _robot.ee_des_vel); 
+        er_null = 1.0*computeInertiaTorqueNull(4.0, _robot.ee_des_vel); 
     }
     // Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
 

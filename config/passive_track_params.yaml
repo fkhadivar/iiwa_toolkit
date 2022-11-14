@@ -2,13 +2,13 @@ options:
   filter_gain: 0.2
 
 control:
-    dsGainPos: 5.0
-    lambda0Pos: 20.0
-    lambda1Pos: 10.0
-    dsGainOri: 3.0
+    dsGainPos: 5.0 #5.0
+    lambda0Pos: 50.0 #20.0
+    lambda1Pos: 25.0 #10.0
+    dsGainOri: 3.0 #3.0
     lambda0Ori: 5.0
     lambda1Ori: 2.5
 
 target:
-    pos: [0.4, 0.0, 0.4]
+    pos: [0.5, -0.4, 0.3]
     quat: [0.7071068, -0.7071068 , 0.0,  0.0]
