@@ -416,17 +416,19 @@ Eigen::VectorXd PassiveControl::computeJointPositionQP(double dt){
     Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(7, 7);
 
     Hessian = _robot.jacobPos.transpose() * _robot.jacobPos + 0.1*identity;
-    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel + 0.2*_robot.stein_distance_grad;
+    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel + 0.0*_robot.stein_distance_grad;
 
     if(!is_just_velocity){
         // joint_velocities =  _robot.jacobPos.transpose() *_robot.pseudo_inv_jacobPos * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
         joint_velocities =  _robot.jacobPos.transpose() * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
-
+        std::cout << "first step" << std::endl;
     }
     else{
         if (!_qp_controller->is_initialised){            
             _qp_controller->initialise(Hessian, linear);
         }
+        std::cout << "second step" << std::endl;
+
 
         joint_velocities = _qp_controller->solve(Hessian, linear);
         

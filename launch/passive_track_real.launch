@@ -2,12 +2,14 @@
     <!-- <include file="$(find iiwa_gazebo)/launch/iiwa_gazebo.launch">
     </include> -->
     <include file="$(find iiwa_driver)/launch/iiwa_bringup.launch">
+    <arg name="controller" value="PositionController" />
     </include>
     
     <node name="passive_tracking" pkg="iiwa_toolkit" type="passive_track" output="screen">
     </node>
 
     <rosparam file="$(find iiwa_toolkit)/config/passive_track_params.yaml" command="load"/>
+    <rosparam file="$(find iiwa_toolkit)/config/inertia_params.yaml" command="load"/>
 
     <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="passive_control_gui" />
 
