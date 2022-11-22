@@ -114,7 +114,9 @@ PassiveControl::PassiveControl(const std::string& urdf_string,const std::string&
     _robot.pseudo_inv_jacob.setZero();   
     _robot.pseudo_inv_jacobPos.setZero();
 
-    _robot.nulljnt_position << 0.0, 0.0, 0.0, -.75, 0., 0.0, 0.0;
+    // _robot.nulljnt_position << 0.0, 0.0, 0.0, -.75, 0., 0.0, 0.0;
+    // _robot.nulljnt_position << -1.09, 1.59, 1.45, -1.6, -2.81, 0.0, 0.0; // inertia
+    _robot.nulljnt_position << 0.00, -0.6, 0.00, -1.7, 0.00, 0.00, 0.0; // manipulability
 
 }
 
@@ -267,7 +269,7 @@ void PassiveControl::set_load(const double& mass ){
 Eigen::VectorXd PassiveControl::computeInertiaTorqueNull(float des_dir_lambda, Eigen::Vector3d& des_vel){
     
     Eigen::Vector3d direction = des_vel / des_vel.norm();
-    float inertia_error = direction.transpose() * _robot.task_inertiaPos * direction - des_dir_lambda;
+    float inertia_error = _robot.direction.transpose() * _robot.task_inertiaPos * _robot.direction - des_dir_lambda;
     Eigen::VectorXd null_torque = 1.0 * _robot.dir_task_inertia_grad * inertia_error;
     // Eigen::VectorXd null_torque = 1.0 * _robot.dir_task_inertia_grad ;
 
@@ -331,14 +333,14 @@ void PassiveControl::computeTorqueCmd(){
     // nullgains << 5.,80,30.,30,5.,2.,2.;
     // nullgains << 20.,5.,20.,10.,10.,2.,2.;
     Eigen::VectorXd er_null;
-    if(!is_just_velocity){
-        er_null = _robot.jnt_position -_robot.nulljnt_position;
-        // er_null = 1.0*computeInertiaTorqueNull(10.0, _robot.direction);
-    }
-    else{
-        er_null = 1.0*computeInertiaTorqueNull(4.0, _robot.ee_des_vel); 
-    }
-    // Eigen::VectorXd er_null = _robot.jnt_position -_robot.nulljnt_position;
+    // if(!is_just_velocity){
+    //     er_null = _robot.jnt_position -_robot.nulljnt_position;
+    //     // er_null = 1.0*computeInertiaTorqueNull(10.0, _robot.direction);
+    // }
+    // else{
+    //     er_null = 0.01*computeInertiaTorqueNull(5.0, _robot.ee_des_vel); 
+    // }
+    er_null = _robot.jnt_position -_robot.nulljnt_position;
 
     // std::cout << "null space error is: " << er_null << std::endl;
     if(er_null.norm()<1.5){
