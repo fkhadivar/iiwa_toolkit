@@ -333,14 +333,14 @@ void PassiveControl::computeTorqueCmd(){
     // nullgains << 5.,80,30.,30,5.,2.,2.;
     // nullgains << 20.,5.,20.,10.,10.,2.,2.;
     Eigen::VectorXd er_null;
-    // if(!is_just_velocity){
-    //     er_null = _robot.jnt_position -_robot.nulljnt_position;
-    //     // er_null = 1.0*computeInertiaTorqueNull(10.0, _robot.direction);
-    // }
-    // else{
-    //     er_null = 0.01*computeInertiaTorqueNull(5.0, _robot.ee_des_vel); 
-    // }
-    er_null = _robot.jnt_position -_robot.nulljnt_position;
+    if(!is_just_velocity){
+        er_null = _robot.jnt_position -_robot.nulljnt_position;
+        // er_null = 1.0*computeInertiaTorqueNull(10.0, _robot.direction);
+    }
+    else{
+        er_null = 0.01*computeInertiaTorqueNull(5.0, _robot.ee_des_vel); 
+    }
+    // er_null = _robot.jnt_position -_robot.nulljnt_position;
 
     // std::cout << "null space error is: " << er_null << std::endl;
     if(er_null.norm()<1.5){
