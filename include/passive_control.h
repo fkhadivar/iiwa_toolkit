@@ -32,6 +32,8 @@
 #include <RBDyn/FD.h>
 #include "thirdparty/Utils.h"
 #include "qp_control.h"
+#include <experimental/filesystem>
+
 
 
 struct Robot
@@ -126,6 +128,10 @@ private:
     double dsGain_pos;
     double dsGain_ori;
     double load_added = 0.;
+
+    /* Just the gains for the QP Controller for inertia
+    */
+    Eigen::MatrixXd velocity_gain = 5.0*Eigen::MatrixXd::Identity(7,7);
 
     Eigen::VectorXd _trq_cmd = Eigen::VectorXd::Zero(7);
     void computeTorqueCmd();

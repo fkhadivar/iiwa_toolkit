@@ -34,6 +34,7 @@
 #include "iiwa_toolkit/passive_cfg_paramsConfig.h"
 #include "dynamic_reconfigure/server.h"
 
+
 #define No_JOINTS 7
 #define No_Robots 1
 #define TOTAL_No_MARKERS 2
@@ -84,7 +85,7 @@ class IiwaRosMaster
         _subControl[1] = _n.subscribe<geometry_msgs::Pose>("/passive_control/vel_quat", 1,
             boost::bind(&IiwaRosMaster::updateControlVel,this,_1),ros::VoidPtr(),ros::TransportHints().reliable().tcpNoDelay());
 
-        _TrqCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/TorqueController/command",1);
+        // _TrqCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/TorqueController/command",1);
         _JntPosCmdPublisher = _n.advertise<std_msgs::Float64MultiArray>("/iiwa/PositionController/command",1);
         _EEPosePublisher = _n.advertise<geometry_msgs::Pose>("/iiwa/ee_info/Pose",1);
         _EEVelPublisher = _n.advertise<geometry_msgs::Twist>("/iiwa/ee_info/Vel",1);
@@ -171,10 +172,14 @@ class IiwaRosMaster
     //
     // run node
     void run(){
+        
+        int count = 0;
         while(!_stop && ros::ok()){ 
             _mutex.lock();
                 _controller->updateRobot(_feedback.jnt_position,_feedback.jnt_velocity,_feedback.jnt_torque);
                 Eigen::VectorXd joint_position = _controller->computeJointPositionQP(_dt);
+                // Eigen::VectorXd joint_position = Eigen::VectorXd::Zero(7) + int((count / 2000))*0.1*Eigen::VectorXd::Ones(7);
+                // std::cout << joint_position.transpose() << std::endl;
                 // publishCommandTorque(_controller->getCmd());
                 publishCommandJointPosition(joint_position);
                 publishPlotVariable(command_plt);
@@ -182,13 +187,14 @@ class IiwaRosMaster
                 publishInertiaInfo();
 
                 // publishPlotVariable(_controller->getPlotVariable());
-                
+                count++;
             _mutex.unlock();
-            
+             
+      
         ros::spinOnce();
         _loopRate.sleep();
         }
-        publishCommandTorque(Eigen::VectorXd::Zero(No_JOINTS));
+        // publishCommandTorque(Eigen::VectorXd::Zero(No_JOINTS));
         ros::spinOnce();
         _loopRate.sleep();
         ros::shutdown();
@@ -276,16 +282,23 @@ class IiwaRosMaster
             _TrqCmdPublisher.publish(_cmd_jnt_torque);
         }
     }
+
     void publishCommandJointPosition(const Eigen::VectorXd& cmdJntPos){
         std_msgs::Float64MultiArray _cmd_jnt_position;
         _cmd_jnt_position.data.resize(No_JOINTS);
 
         if (cmdJntPos.size() == No_JOINTS){
             for(int i = 0; i < No_JOINTS; i++)
-                _cmd_jnt_position.data[i] = cmdJntPos[i];
+                if (abs(cmdJntPos[i]) < 2){
+                    _cmd_jnt_position.data[i] = cmdJntPos[i];
+                }
+                else{
+                    _cmd_jnt_position.data[i] = _feedback.jnt_position[i];
+                }
             _JntPosCmdPublisher.publish(_cmd_jnt_position);
         }
     }
+
     void publishPlotVariable(const Eigen::VectorXd& pltVar){
         std_msgs::Float64MultiArray _plotVar;
         _plotVar.data.resize(pltVar.size());
@@ -293,6 +306,7 @@ class IiwaRosMaster
             _plotVar.data[i] = pltVar[i];
         _plotPublisher.publish(_plotVar);
     }
+    
     void publishEEInfo(){
         geometry_msgs::Pose msg1;
         geometry_msgs::Twist msg2;
@@ -353,7 +367,7 @@ class IiwaRosMaster
         Eigen::Vector4d quat;
         vel << (double)msg->position.x, (double)msg->position.y, (double)msg->position.z;
         quat << (double)msg->orientation.w, (double)msg->orientation.x, (double)msg->orientation.y, (double)msg->orientation.z;
-        if(vel.norm()<1.){
+        if(vel.norm()<3.){
             _controller->set_desired_velocity(vel);
             if((quat.norm() > 0)&&(quat.norm() < 1.1)){
                 quat.normalize();

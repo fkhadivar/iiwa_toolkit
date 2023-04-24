@@ -232,8 +232,17 @@ Eigen::VectorXd PassiveControl::getSteinDivergenceGradient(iiwa_tools::RobotStat
 
     double stein_distance = abs(log(abs((0.5 * task_inertia + des_inertia).determinant())) - 0.5*log(abs((task_inertia * des_inertia).determinant())));
 
+    std::ofstream robot_data;
+    robot_data.open("/home/harshit/developments/iiwa_ws/src/i_am_project/data/stein_distance/stein_inertia_1.csv", std::ofstream::out | std::ofstream::app);    
+    if(!robot_data.is_open())
+    {
+        std::cerr << "Error opening output file.\n";
+        std::cout << "Current path is " << std::experimental::filesystem::current_path() << '\n';
+    }
 
-    std::cout << "distance is : : : : : " << stein_distance << std::endl;
+    robot_data << stein_distance << "\n";
+      
+    robot_data.close(); 
     Eigen::MatrixXd duplicate_joint_inertia = Eigen::MatrixXd(7,7);
     Eigen::MatrixXd duplicate_task_inertia = Eigen::MatrixXd(3,3);
     Eigen::MatrixXd jacob = Eigen::MatrixXd(6, 7);
@@ -416,11 +425,12 @@ Eigen::VectorXd PassiveControl::computeJointPositionQP(double dt){
     Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(7, 7);
 
     Hessian = _robot.jacobPos.transpose() * _robot.jacobPos + 0.1*identity;
-    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel + 0.0*_robot.stein_distance_grad;
+    linear = -1.0 * _robot.jacobPos.transpose() * _robot.ee_des_vel + 0.8*_robot.stein_distance_grad;
 
     if(!is_just_velocity){
         // joint_velocities =  _robot.jacobPos.transpose() *_robot.pseudo_inv_jacobPos * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
-        joint_velocities =  _robot.jacobPos.transpose() * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
+        joint_velocities =  0.2*_robot.jacobPos.transpose() * (-_robot.ee_pos + _robot.ee_des_pos)/dt;
+
         std::cout << "first step" << std::endl;
     }
     else{
@@ -433,11 +443,10 @@ Eigen::VectorXd PassiveControl::computeJointPositionQP(double dt){
         joint_velocities = _qp_controller->solve(Hessian, linear);
         
     }
+    velocity_gain(1,1) = 8.0;
 
-    // else{
-    //     joint_velocities = _robot.jacobPos.transpose() * _robot.pseudo_inv_jacobPos * _robot.ee_des_vel;
-    // }
-
-    return _robot.jnt_position + joint_velocities*dt;
+    // std::cout << velocity_gain << std::endl;
+    
+    return _robot.jnt_position + 5.0*joint_velocities*dt;
 
 }
